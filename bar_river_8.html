@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BAR RIVER 注文システム</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#050505;min-height:100vh;display:flex;justify-content:center;padding:20px;}
+.app{background:#0a0a0a;width:100%;max-width:420px;min-height:100vh;border-radius:16px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#fff;}
+.header{background:#111;border-bottom:1px solid #222;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;}
+.logo{font-size:12px;letter-spacing:3px;font-weight:500;}
+.logo span{color:#ff6b2b;}
+.hinfo{font-size:11px;color:#555;}
+.screen{display:none;padding:16px;}
+.screen.active{display:block;}
+.stitle{font-size:10px;letter-spacing:2px;color:#555;margin-bottom:14px;}
+
+/* 営業開始画面 */
+.open-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;text-align:center;padding:32px 20px;}
+.open-logo{font-size:11px;letter-spacing:4px;color:#555;margin-bottom:8px;}
+.open-logo span{color:#ff6b2b;}
+.open-date{font-size:36px;font-weight:700;color:#fff;margin-bottom:4px;letter-spacing:2px;}
+.open-day{font-size:13px;color:#555;margin-bottom:48px;}
+.open-btn{background:#ff6b2b;border:none;border-radius:16px;padding:18px 48px;color:#fff;font-size:16px;font-weight:600;cursor:pointer;letter-spacing:1px;width:100%;max-width:280px;}
+.open-btn:active{opacity:0.8;}
+.open-session{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:12px 20px;margin-bottom:32px;width:100%;max-width:280px;}
+.open-session-label{font-size:10px;color:#555;margin-bottom:4px;letter-spacing:1px;}
+.open-session-val{font-size:13px;color:#ff6b2b;}
+
+/* 閉店画面 */
+.closed-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;text-align:center;padding:32px 20px;}
+.closed-emoji{font-size:64px;margin-bottom:20px;}
+.closed-title{font-size:22px;font-weight:700;color:#fff;margin-bottom:8px;}
+.closed-sub{font-size:13px;color:#555;margin-bottom:32px;line-height:1.6;}
+.closed-stats{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:16px 20px;width:100%;max-width:280px;margin-bottom:24px;}
+.closed-stat-row{display:flex;justify-content:space-between;font-size:13px;color:#888;padding:4px 0;}
+.closed-stat-row.big{font-size:16px;font-weight:600;color:#fff;border-top:1px solid #222;margin-top:8px;padding-top:10px;}
+.closed-btn-wrap{display:flex;flex-direction:column;gap:10px;width:100%;max-width:280px;}
+.reopen-btn{background:transparent;border:1px solid #333;border-radius:12px;padding:13px;color:#555;font-size:13px;cursor:pointer;}
+
+/* スタッフグリッド */
+.staff-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.sbtn{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:14px 8px;text-align:center;cursor:pointer;}
+.sbtn:active{opacity:0.7;}
+.av{width:36px;height:36px;border-radius:50%;background:#2a2a2a;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:#ff6b2b;border:1px solid #333;}
+.av.own{background:#1f1200;border-color:#ff6b2b;}
+.sname{font-size:12px;color:#ccc;}
+.srole{font-size:10px;color:#555;margin-top:2px;}
+.newbtn{background:#111;border:2px dashed #333;border-radius:12px;padding:14px 8px;text-align:center;cursor:pointer;}
+.ninput{display:none;background:#151515;border:1px solid #ff6b2b44;border-radius:12px;padding:14px;margin-top:8px;grid-column:span 3;}
+.ninput.show{display:block;}
+.ninput input{background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:10px 12px;color:#fff;font-size:14px;width:100%;margin-bottom:10px;}
+.ninput input::placeholder{color:#444;}
+.obtn{background:#ff6b2b;border:none;border-radius:8px;padding:11px;color:#fff;font-size:14px;font-weight:500;width:100%;cursor:pointer;}
+
+/* グループ一覧 */
+.group-list{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;}
+.gcard{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:14px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;}
+.gcard:active{opacity:0.7;}
+.gname{font-size:15px;font-weight:500;color:#fff;}
+.gmeta{font-size:11px;color:#555;margin-top:3px;}
+.gprice{text-align:right;flex-shrink:0;margin-left:10px;}
+.gprice-num{font-size:14px;color:#ff6b2b;font-weight:500;}
+.gprice-sub{font-size:10px;color:#444;}
+.addgroup{background:#111;border:2px dashed #333;border-radius:12px;padding:16px;text-align:center;cursor:pointer;color:#444;font-size:13px;}
+.modal-bg{background:#151515;border:1px solid #333;border-radius:16px;padding:16px;margin-bottom:12px;}
+.field{margin-bottom:12px;}
+.field label{font-size:10px;color:#555;display:block;margin-bottom:6px;letter-spacing:1px;}
+.field input{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:10px 12px;color:#fff;font-size:14px;width:100%;}
+.field input::placeholder{color:#333;}
+.mini-staff{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;}
+.msbtn{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:20px;padding:6px 12px;cursor:pointer;font-size:12px;color:#888;}
+.msbtn.sel{background:#1f1200;border-color:#ff6b2b;color:#ff6b2b;}
+
+/* タブ */
+.group-tabs{display:flex;gap:0;margin-bottom:14px;background:#111;border-radius:10px;padding:3px;}
+.gtab{flex:1;text-align:center;padding:8px;font-size:12px;color:#555;cursor:pointer;border-radius:8px;transition:all 0.15s;}
+.gtab.active{background:#1a1a1a;color:#fff;}
+
+/* 注文入力 */
+.who-sel{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px;}
+.wbtn{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:10px 6px;text-align:center;cursor:pointer;font-size:12px;color:#888;}
+.wbtn.active{background:#1f1200;border-color:#ff6b2b;color:#ff6b2b;}
+.cat-tabs{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px;}
+.ctab{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:20px;padding:5px 12px;font-size:11px;color:#666;cursor:pointer;white-space:nowrap;flex-shrink:0;}
+.ctab.active{background:#ff6b2b;border-color:#ff6b2b;color:#fff;}
+.mlist{display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;}
+.mitem{background:#1a1a1a;border:1px solid #222;border-radius:10px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;}
+.iname{font-size:13px;color:#ddd;}
+.iprice{font-size:12px;color:#ff6b2b;}
+.qctrl{display:flex;align-items:center;gap:6px;}
+.qbtn{background:#222;border:1px solid #333;border-radius:6px;width:32px;height:32px;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.qbtn.plus{background:#ff6b2b;border-color:#ff6b2b;}
+.qnum{font-size:13px;color:#fff;min-width:18px;text-align:center;}
+.osummary{background:#111;border:1px solid #222;border-radius:12px;padding:12px;margin-top:12px;}
+.orow{display:flex;justify-content:space-between;font-size:12px;color:#888;padding:3px 0;}
+.ototal{display:flex;justify-content:space-between;font-size:14px;font-weight:500;color:#fff;border-top:1px solid #222;margin-top:8px;padding-top:8px;}
+.otax{display:flex;justify-content:space-between;font-size:11px;color:#ff6b2b;padding-top:4px;}
+.sendbtn{background:#ff6b2b;border:none;border-radius:12px;width:100%;padding:13px;color:#fff;font-size:14px;font-weight:500;margin-top:12px;cursor:pointer;}
+.backbtn{background:transparent;border:1px solid #2a2a2a;border-radius:8px;padding:6px 12px;color:#555;font-size:11px;cursor:pointer;}
+.ibar{background:#111;border:1px solid #1a1a1a;border-radius:10px;padding:8px 12px;display:flex;justify-content:space-between;margin-bottom:12px;}
+.ibar span{font-size:11px;color:#555;}
+.ibar strong{color:#ff6b2b;font-size:12px;}
+.tag{display:inline-block;background:#1f1200;border:1px solid #ff6b2b44;border-radius:20px;padding:2px 8px;font-size:10px;color:#ff6b2b;margin:2px;}
+.edit-shimei{font-size:11px;color:#ff6b2b;cursor:pointer;margin-left:8px;}
+
+/* 会計画面 */
+.kaikei-header{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:14px 16px;margin-bottom:12px;}
+.kaikei-gname{font-size:18px;font-weight:600;color:#fff;margin-bottom:4px;}
+.kaikei-meta{font-size:11px;color:#555;}
+.kaikei-section{margin-bottom:14px;}
+.kaikei-section-title{font-size:10px;letter-spacing:2px;color:#555;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #1a1a1a;}
+.kaikei-item{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #111;}
+.kaikei-item:last-child{border-bottom:none;}
+.kaikei-item-name{font-size:13px;color:#ccc;}
+.kaikei-item-detail{font-size:10px;color:#555;margin-top:2px;}
+.kaikei-item-price{font-size:13px;color:#fff;font-weight:500;}
+.kaikei-total-box{background:#111;border:1px solid #222;border-radius:12px;padding:14px;}
+.kaikei-row{display:flex;justify-content:space-between;font-size:12px;color:#666;padding:4px 0;}
+.kaikei-row.big{font-size:16px;font-weight:600;color:#fff;border-top:1px solid #222;margin-top:8px;padding-top:10px;}
+.kaikei-row.tax{color:#ff6b2b;font-size:12px;}
+.close-btn{background:transparent;border:2px solid #ff6b2b;border-radius:12px;width:100%;padding:13px;color:#ff6b2b;font-size:14px;font-weight:600;margin-top:12px;cursor:pointer;}
+.close-btn:active{background:#ff6b2b;color:#fff;}
+.del-btn{background:transparent;border:1px solid #2a2a2a;border-radius:6px;padding:3px 8px;color:#444;font-size:11px;cursor:pointer;}
+.del-btn:active{border-color:#e53935;color:#e53935;}
+.gcard-actions{display:flex;gap:6px;margin-top:8px;}
+.gcard-kaikei-btn{background:#ff6b2b22;border:1px solid #ff6b2b44;border-radius:8px;padding:5px 10px;font-size:11px;color:#ff6b2b;cursor:pointer;}
+.gcard-kaikei-btn:active{background:#ff6b2b44;}
+
+/* 支払いモーダル */
+.pay-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:100;align-items:flex-end;justify-content:center;}
+.pay-modal.show{display:flex;}
+.pay-sheet{background:#1a1a1a;border-radius:20px 20px 0 0;padding:24px 20px 40px;width:100%;max-width:420px;}
+.pay-title{font-size:11px;letter-spacing:2px;color:#555;text-align:center;margin-bottom:10px;}
+.pay-amount{font-size:32px;font-weight:700;color:#fff;text-align:center;margin-bottom:24px;}
+.pay-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.pay-btn{border:none;border-radius:12px;padding:18px;font-size:15px;font-weight:600;cursor:pointer;}
+.pay-btn.cash{background:#252525;color:#4caf50;border:1px solid #4caf5033;}
+.pay-btn.card{background:#1a1f2a;color:#5b9cf6;border:1px solid #5b9cf633;}
+.pay-cancel{background:transparent;border:none;color:#444;font-size:12px;width:100%;margin-top:16px;cursor:pointer;padding:8px;}
+
+/* 閉店確認モーダル */
+.close-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:100;align-items:center;justify-content:center;padding:20px;}
+.close-modal.show{display:flex;}
+.close-sheet{background:#1a1a1a;border-radius:16px;padding:24px 20px;width:100%;max-width:380px;}
+.close-sheet-title{font-size:16px;font-weight:600;color:#fff;text-align:center;margin-bottom:8px;}
+.close-sheet-sub{font-size:12px;color:#555;text-align:center;margin-bottom:20px;line-height:1.6;}
+.close-sheet-stats{background:#111;border-radius:10px;padding:12px;margin-bottom:20px;}
+.close-sheet-row{display:flex;justify-content:space-between;font-size:12px;color:#888;padding:3px 0;}
+.close-sheet-row.big{font-size:15px;font-weight:600;color:#fff;border-top:1px solid #222;margin-top:6px;padding-top:8px;}
+.close-confirm-btn{background:#ff6b2b;border:none;border-radius:12px;width:100%;padding:14px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:8px;}
+.close-cancel-btn{background:transparent;border:none;color:#444;font-size:12px;width:100%;padding:8px;cursor:pointer;}
+
+/* 履歴バッジ */
+.pay-badge{display:inline-block;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:500;margin-left:6px;vertical-align:middle;}
+.pay-badge.cash{background:#1a2a1a;color:#4caf50;}
+.pay-badge.card{background:#1a1f2a;color:#5b9cf6;}
+.hist-time{font-size:10px;color:#333;margin-top:2px;}
+
+/* ヘッダー閉店ボタン */
+.header-close-btn{background:transparent;border:1px solid #333;border-radius:6px;padding:4px 10px;color:#555;font-size:10px;cursor:pointer;}
+.header-close-btn:active{border-color:#ff6b2b;color:#ff6b2b;}
+
+/* 営業日バッジ */
+.session-badge{background:#1f1200;border:1px solid #ff6b2b33;border-radius:6px;padding:2px 8px;font-size:10px;color:#ff6b2b;margin-left:6px;}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="header">
+  <div class="logo">BAR <span>RIVER</span></div>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <div class="hinfo" id="hinfo" onclick="tryLogout()" style="cursor:pointer;padding:4px 8px;border-radius:6px;" title="タップでスタッフ変更"></div>
+    <button class="header-close-btn" id="header-close-btn" style="display:none;" onclick="openCloseModal()">閉店</button>
+  </div>
+</div>
+
+<!-- 営業開始画面 -->
+<div class="screen active" id="sc-open">
+  <div class="open-screen">
+    <div class="open-logo">BAR <span>RIVER</span></div>
+    <div class="open-date" id="open-date">—</div>
+    <div class="open-day" id="open-day">—</div>
+    <div class="open-session" id="open-session-info" style="display:none;">
+      <div class="open-session-label">前回の営業</div>
+      <div class="open-session-val" id="open-last-session">—</div>
+    </div>
+    <button class="open-btn" onclick="startSession()">営業スタート 🍸</button>
+  </div>
+</div>
+
+<!-- スタッフ選択 -->
+<div class="screen" id="sc-staff">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+    <div class="stitle" style="margin:0;">スタッフ選択</div>
+    <div id="session-date-badge" class="session-badge"></div>
+  </div>
+  <div class="staff-grid">
+    <div class="sbtn" onclick="selStaff('なおと')"><div class="av">な</div><div class="sname">なおと</div><div class="srole">レギュラー</div></div>
+    <div class="sbtn" onclick="selStaff('りん')"><div class="av">り</div><div class="sname">りん</div><div class="srole">レギュラー</div></div>
+    <div class="sbtn" onclick="selStaff('りょうせい')"><div class="av">り</div><div class="sname">りょうせい</div></div>
+    <div class="sbtn" onclick="selStaff('そうたろう')"><div class="av">そ</div><div class="sname">そうたろう</div></div>
+    <div class="sbtn" onclick="selStaff('あやと')"><div class="av">あ</div><div class="sname">あやと</div></div>
+    <div class="sbtn" onclick="selStaff('ゆうせい')"><div class="av">ゆ</div><div class="sname">ゆうせい</div></div>
+    <div class="sbtn" onclick="selStaff('としき')"><div class="av">と</div><div class="sname">としき</div></div>
+    <div class="sbtn" onclick="selStaff('かなた')"><div class="av">か</div><div class="sname">かなた</div></div>
+    <div class="sbtn" onclick="selStaff('けんしろう')"><div class="av">け</div><div class="sname">けんしろう</div></div>
+    <div class="sbtn" onclick="selStaff('いっこう')"><div class="av">い</div><div class="sname">いっこう</div></div>
+    <div class="newbtn" onclick="toggleNew()"><div class="av" style="background:#111;border-color:#333;color:#333;font-size:20px;">+</div><div class="sname" style="color:#444;font-size:11px;">新しいスタッフ</div></div>
+    <div class="ninput" id="ninput" style="grid-column:span 3;">
+      <input type="text" id="nname" placeholder="名前を入力..." />
+      <button class="obtn" onclick="addTemp()">この名前で入る →</button>
+    </div>
+  </div>
+</div>
+
+<!-- グループ一覧 -->
+<div class="screen" id="sc-groups">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+    <button class="backbtn" onclick="goTo('sc-staff')">← 戻る</button>
+    <div class="stitle" style="margin:0;">お客様グループ</div>
+  </div>
+  <div class="group-tabs">
+    <div class="gtab active" id="gtab-active" onclick="switchTab('active')">営業中</div>
+    <div class="gtab" id="gtab-hist" onclick="switchTab('hist')">履歴</div>
+  </div>
+  <div class="group-list" id="glist"></div>
+  <div id="addgroup-wrap">
+    <div class="addgroup" onclick="toggleAddGroup()">＋ 新しいグループを追加</div>
+    <div id="addgroup-form" style="display:none;margin-top:10px;">
+      <div class="modal-bg">
+        <div class="field"><label>お客様名</label><input type="text" id="gname-in" placeholder="例：新規・A様グループ" /></div>
+        <div class="field"><label>人数</label><input type="number" id="gpax-in" placeholder="1" min="1" style="width:80px;" /></div>
+        <div class="field"><label>指名スタッフ（複数可）</label><div class="mini-staff" id="shimei-sel"></div></div>
+        <button class="obtn" onclick="createGroup()">グループを作成 →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 注文入力 -->
+<div class="screen" id="sc-order">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+    <button class="backbtn" onclick="goTo('sc-groups')">← 戻る</button>
+    <div class="stitle" style="margin:0;">注文入力</div>
+  </div>
+  <div class="ibar">
+    <span>担当 <strong id="o-staff">—</strong></span>
+    <span>グループ <strong id="o-group">—</strong></span>
+    <span>税込 <strong id="o-cur">¥0</strong></span>
+  </div>
+  <div style="margin-bottom:10px;">
+    <div style="font-size:10px;letter-spacing:1px;color:#555;margin-bottom:6px;">指名スタッフ <span class="edit-shimei" onclick="toggleShimeiEdit()">＋ 場内指名を追加</span></div>
+    <div id="shimei-display"></div>
+    <div id="shimei-edit-area" style="display:none;margin-top:8px;">
+      <div class="mini-staff" id="shimei-edit-list"></div>
+      <button class="obtn" onclick="saveShimei()" style="margin-top:8px;padding:8px;">保存する</button>
+    </div>
+  </div>
+  <div style="font-size:10px;letter-spacing:1px;color:#555;margin-bottom:6px;">誰のドリンク？</div>
+  <div class="who-sel">
+    <div class="wbtn active" id="w-guest" onclick="setWho('guest')">お客様</div>
+    <div class="wbtn" id="w-self" onclick="setWho('self')">自分</div>
+    <div class="wbtn" id="w-other" onclick="setWho('other')">他スタッフ</div>
+  </div>
+  <div id="other-staff-sel" style="display:none;margin-bottom:10px;">
+    <div style="font-size:10px;color:#555;margin-bottom:6px;">スタッフを選択</div>
+    <div class="mini-staff" id="other-staff-list"></div>
+  </div>
+  <div class="cat-tabs" id="cat-tabs"></div>
+  <div class="mlist" id="mlist"></div>
+  <!-- 自由入力エリア（その他タブ選択時に表示） -->
+  <div id="custom-input-area" style="display:none;margin-top:8px;">
+    <div style="background:#151515;border:1px solid #2a2a2a;border-radius:10px;padding:10px 12px;">
+      <div style="font-size:10px;color:#555;margin-bottom:8px;letter-spacing:1px;">カスタム追加</div>
+      <div style="display:flex;gap:6px;margin-bottom:6px;">
+        <input type="text" id="custom-name" placeholder="品名（例：限定ボトル）" style="background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:8px 10px;color:#fff;font-size:13px;flex:1;" />
+        <input type="number" id="custom-price" placeholder="金額" style="background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:8px 10px;color:#fff;font-size:13px;width:80px;" />
+        <input type="number" id="custom-qty" placeholder="個数" min="1" value="1" style="background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:8px 10px;color:#fff;font-size:13px;width:60px;" />
+      </div>
+      <button onclick="addCustomItem()" style="background:#ff6b2b;border:none;border-radius:8px;padding:8px;color:#fff;font-size:13px;font-weight:500;width:100%;cursor:pointer;">追加 +</button>
+    </div>
+  </div>
+  <div class="osummary">
+    <div id="orows" style="color:#444;font-size:12px;">まだ注文なし</div>
+    <div class="ototal" id="ototaldiv" style="display:none;"><span>小計（税抜）</span><span id="ototal">¥0</span></div>
+    <div class="otax" id="otaxdiv" style="display:none;"><span>税込合計</span><span id="otax">¥0</span></div>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:12px;">
+    <button class="sendbtn" onclick="sendOrder()" style="margin-top:0;flex:1;">注文を追加する</button>
+    <button onclick="sendAndKaikei()" style="background:#222;border:1px solid #333;border-radius:12px;padding:13px 14px;color:#888;font-size:12px;cursor:pointer;white-space:nowrap;flex-shrink:0;">会計へ →</button>
+  </div>
+</div>
+
+<!-- 完了画面 -->
+<div class="screen" id="sc-done">
+  <div style="text-align:center;padding:50px 20px;">
+    <div style="font-size:52px;">✅</div>
+    <div style="font-size:17px;font-weight:500;margin:14px 0 8px;">注文を追加しました</div>
+    <div id="done-info" style="font-size:12px;color:#555;margin-bottom:24px;"></div>
+    <button class="sendbtn" onclick="goTo('sc-groups')" style="max-width:220px;margin:0 auto;display:block;">グループ一覧へ戻る</button>
+    <button class="backbtn" onclick="goTo('sc-order')" style="margin-top:10px;display:block;width:100%;max-width:220px;margin-left:auto;margin-right:auto;text-align:center;padding:10px;">続けて注文を入力する</button>
+  </div>
+</div>
+
+<!-- 会計画面 -->
+<div class="screen" id="sc-kaikei">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+    <button class="backbtn" onclick="goTo('sc-groups')">← 戻る</button>
+    <div class="stitle" style="margin:0;">会計</div>
+  </div>
+  <div class="kaikei-header">
+    <div class="kaikei-gname" id="k-gname">—</div>
+    <div class="kaikei-meta" id="k-gmeta">—</div>
+  </div>
+  <div class="kaikei-section">
+    <div class="kaikei-section-title">注文一覧</div>
+    <div id="k-guest-orders"></div>
+  </div>
+  <div class="kaikei-total-box">
+    <div class="kaikei-row"><span>小計（税抜）</span><span id="k-subtotal">¥0</span></div>
+    <div class="kaikei-row tax"><span>消費税 10%</span><span id="k-tax">¥0</span></div>
+    <div class="kaikei-row big"><span>税込合計</span><span id="k-total">¥0</span></div>
+  </div>
+  <button class="close-btn" id="k-close-btn" onclick="openPayModal()">会計を締める ✓</button>
+  <div id="k-closed-msg" style="display:none;text-align:center;padding:14px;color:#555;font-size:12px;"></div>
+</div>
+
+<!-- 閉店画面 -->
+<div class="screen" id="sc-closed">
+  <div class="closed-screen">
+    <div class="closed-emoji">🌙</div>
+    <div class="closed-title">お疲れ様でした！</div>
+    <div class="closed-sub" id="closed-date-str">—</div>
+    <div class="closed-stats" id="closed-stats"></div>
+    <div class="closed-btn-wrap">
+      <button class="reopen-btn" onclick="startSession()">新しい営業を始める</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<!-- 支払いモーダル -->
+<div class="pay-modal" id="pay-modal">
+  <div class="pay-sheet">
+    <div class="pay-title">お支払い方法</div>
+    <div class="pay-amount" id="pay-amount-disp">¥0</div>
+    <div class="pay-btns">
+      <button class="pay-btn cash" onclick="closeGroup('cash')">💴 現金</button>
+      <button class="pay-btn card" onclick="closeGroup('card')">💳 カード</button>
+    </div>
+    <button class="pay-cancel" onclick="closePayModal()">キャンセル</button>
+  </div>
+</div>
+
+<!-- 閉店確認モーダル -->
+<div class="close-modal" id="close-modal">
+  <div class="close-sheet">
+    <div class="close-sheet-title">閉店しますか？</div>
+    <div class="close-sheet-sub" id="close-modal-sub">未会計のグループが残っています。<br>本当に閉店しますか？</div>
+    <div class="close-sheet-stats" id="close-modal-stats"></div>
+    <button class="close-confirm-btn" onclick="confirmClose()">閉店する 🌙</button>
+    <button class="close-cancel-btn" onclick="document.getElementById('close-modal').classList.remove('show')">キャンセル</button>
+  </div>
+</div>
+
+<script>
+const STAFF=['なおと','りん','りょうせい','そうたろう','あやと','ゆうせい','としき','かなた','けんしろう','いっこう'];
+const CAN_EDIT=['りいや','なおと','りん']; // 修正権限あり
+const DAYS=['日','月','火','水','木','金','土'];
+const MENUS={
+  shochu:[{n:'鏡月',p:3000},{n:'チャミスル',p:3000},{n:'TAKUMA',p:3000},{n:'プレミアム鏡月',p:4000},{n:'黒桐島',p:4000},{n:'吉四六',p:5500}],
+  whiskey:[{n:'角',p:4000},{n:'ジャックダニエル',p:6000},{n:'シーバスミズナラ',p:9500},{n:'響ブレンダーズ',p:30000},{n:'山崎（時価）',p:0},{n:'山崎12年（時価）',p:0}],
+  champagne:[{n:'オリジナル',p:15000},{n:'モエ白',p:12000},{n:'モエロゼ',p:18000},{n:'モエネクター',p:22000},{n:'モエアイス',p:22000},{n:'ドンペリ白',p:80000},{n:'ドンペリロゼ',p:120000},{n:'アルマンドゴールド',p:140000},{n:'アルマンドロゼ',p:180000},{n:'ソウメイ',p:70000}],
+  shot:[{n:'テキーラ クエルボ',p:500},{n:'アネホ1800',p:10000},{n:'コカボム',p:1000},{n:'クライナー',p:700}],
+  other:[{n:'ミネラルウォーター',p:700},{n:'割りもの',p:700},{n:'お菓子',p:0},{n:'ダーツ',p:0},{n:'飲み放題',p:3000},{n:'チャージ',p:1500}]
+};
+
+let curStaff='',groups=[],sessions=[],curGroupId=null,curOrders=[],curWho='guest',curOtherStaff='',curTab='active',curSessionId=null;
+
+/* ---- localStorage ---- */
+function saveData(){
+  try{
+    localStorage.setItem('river_groups',JSON.stringify(groups));
+    localStorage.setItem('river_sessions',JSON.stringify(sessions));
+    localStorage.setItem('river_cur_session',curSessionId||'');
+  }catch(e){}
+}
+function loadData(){
+  try{
+    const g=localStorage.getItem('river_groups');
+    const s=localStorage.getItem('river_sessions');
+    const cs=localStorage.getItem('river_cur_session');
+    if(g)groups=JSON.parse(g);
+    if(s)sessions=JSON.parse(s);
+    if(cs&&cs!=='')curSessionId=cs;
+  }catch(e){groups=[];sessions=[];}
+}
+
+/* ---- 日付フォーマット ---- */
+function fmtDate(d){return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;}
+function fmtDateJP(d){return`${d.getMonth()+1}月${d.getDate()}日（${DAYS[d.getDay()]}）`;}
+function fmtTime(d){return`${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;}
+
+/* ---- 営業セッション ---- */
+function initOpenScreen(){
+  const now=new Date();
+  document.getElementById('open-date').textContent=fmtDate(now);
+  document.getElementById('open-day').textContent=DAYS[now.getDay()]+'曜日';
+  // 前回の営業があれば表示
+  if(sessions.length){
+    const last=sessions[sessions.length-1];
+    const lastDate=new Date(last.startedAt);
+    document.getElementById('open-last-session').textContent=fmtDateJP(lastDate)+' '+fmtTime(lastDate)+'〜';
+    document.getElementById('open-session-info').style.display='block';
+  }
+}
+
+function startSession(){
+  const now=new Date();
+  curSessionId='session_'+now.getTime();
+  const session={id:curSessionId,startedAt:now.toISOString(),closedAt:null,dateLabel:fmtDate(now)};
+  sessions.push(session);
+  // このセッションのグループを初期化（セッションIDで紐づけ）
+  saveData();
+  // セッション日付バッジ更新
+  document.getElementById('session-date-badge').textContent=fmtDateJP(now);
+  document.getElementById('header-close-btn').style.display='block';
+  goTo('sc-staff');
+}
+
+function openCloseModal(){
+  const sessionGroups=groups.filter(g=>g.sessionId===curSessionId);
+  const unclosed=sessionGroups.filter(g=>!g.closed);
+  const closedGroups=sessionGroups.filter(g=>g.closed);
+  const totalSales=closedGroups.reduce((s,g)=>{
+    return s+g.orders.reduce((a,o)=>a+(o.price*o.qty),0);
+  },0);
+
+  const sub=document.getElementById('close-modal-sub');
+  if(unclosed.length>0){
+    sub.innerHTML=`<span style="color:#ff6b2b;">${unclosed.length}件</span>未会計のグループがあります。<br>このまま閉店しますか？`;
+  } else {
+    sub.innerHTML='本日の営業を終了します。';
+  }
+
+  document.getElementById('close-modal-stats').innerHTML=`
+    <div class="close-sheet-row"><span>グループ数</span><span>${sessionGroups.length}組</span></div>
+    <div class="close-sheet-row"><span>会計済み</span><span>${closedGroups.length}組</span></div>
+    <div class="close-sheet-row big"><span>本日売上（税込）</span><span>¥${Math.round(totalSales*1.1).toLocaleString()}</span></div>
+  `;
+  document.getElementById('close-modal').classList.add('show');
+}
+
+function confirmClose(){
+  document.getElementById('close-modal').classList.remove('show');
+  const now=new Date();
+  const session=sessions.find(s=>s.id===curSessionId);
+  if(session)session.closedAt=now.toISOString();
+
+  // 閉店画面の集計
+  const sessionGroups=groups.filter(g=>g.sessionId===curSessionId);
+  const closedGroups=sessionGroups.filter(g=>g.closed);
+  const totalSales=closedGroups.reduce((s,g)=>{
+    return s+g.orders.reduce((a,o)=>a+(o.price*o.qty),0);
+  },0);
+  const cashSales=closedGroups.filter(g=>g.payMethod==='cash').reduce((s,g)=>{
+    return s+g.orders.reduce((a,o)=>a+(o.price*o.qty),0);
+  },0);
+  const cardSales=closedGroups.filter(g=>g.payMethod==='card').reduce((s,g)=>{
+    return s+g.orders.reduce((a,o)=>a+(o.price*o.qty),0);
+  },0);
+
+  const startedAt=new Date(session.startedAt);
+  document.getElementById('closed-date-str').textContent=fmtDateJP(startedAt)+'　'+fmtTime(startedAt)+'〜'+fmtTime(now);
+  document.getElementById('closed-stats').innerHTML=`
+    <div class="close-sheet-row"><span>グループ数</span><span>${sessionGroups.length}組</span></div>
+    <div class="close-sheet-row"><span>💴 現金</span><span>¥${Math.round(cashSales*1.1).toLocaleString()}</span></div>
+    <div class="close-sheet-row"><span>💳 カード</span><span>¥${Math.round(cardSales*1.1).toLocaleString()}</span></div>
+    <div class="close-sheet-row big"><span>売上合計（税込）</span><span>¥${Math.round(totalSales*1.1).toLocaleString()}</span></div>
+  `;
+
+  saveData();
+  curSessionId=null;
+  curStaff='';
+  document.getElementById('hinfo').textContent='';
+  document.getElementById('header-close-btn').style.display='none';
+  goTo('sc-closed');
+}
+
+/* ---- Logout ---- */
+function tryLogout(){
+  if(!curStaff)return;
+  if(confirm(curStaff+'さん、スタッフ選択に戻りますか？\n（入力中の注文は破棄されます）')){
+    curStaff='';
+    curOrders=[];
+    document.getElementById('hinfo').textContent='';
+    document.getElementById('w-self').textContent='自分';
+    goTo('sc-staff');
+  }
+}
+
+/* ---- Navigation ---- */
+function goTo(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+function toggleNew(){const n=document.getElementById('ninput');n.classList.toggle('show');if(n.classList.contains('show'))document.getElementById('nname').focus();}
+function addTemp(){const v=document.getElementById('nname').value.trim();if(!v)return;selStaff(v);document.getElementById('nname').value='';document.getElementById('ninput').classList.remove('show');}
+
+/* ---- Tab ---- */
+function switchTab(tab){
+  curTab=tab;
+  document.getElementById('gtab-active').classList.toggle('active',tab==='active');
+  document.getElementById('gtab-hist').classList.toggle('active',tab==='hist');
+  document.getElementById('addgroup-wrap').style.display=tab==='active'?'block':'none';
+  renderGroups();
+}
+
+/* ---- Staff ---- */
+function selStaff(name){
+  curStaff=name;
+  document.getElementById('hinfo').textContent=name;
+  document.getElementById('w-self').textContent='自分（'+name+'）';
+  curTab='active';
+  document.getElementById('gtab-active').classList.add('active');
+  document.getElementById('gtab-hist').classList.remove('active');
+  document.getElementById('addgroup-wrap').style.display='block';
+  renderGroups();
+  goTo('sc-groups');
+  const all=STAFF.includes(name)?STAFF:[...STAFF,name];
+  document.getElementById('shimei-sel').innerHTML=all.map(s=>`<div class="msbtn" onclick="this.classList.toggle('sel')">${s}</div>`).join('');
+  document.getElementById('other-staff-list').innerHTML=all.filter(s=>s!==name).map(s=>`<div class="msbtn" onclick="selOther(this,'${s}')">${s}</div>`).join('');
+}
+
+/* ---- Groups ---- */
+function renderGroups(){
+  const el=document.getElementById('glist');
+  // 現セッションのみ表示
+  const sessionGroups=groups.filter(g=>g.sessionId===curSessionId);
+  const list=sessionGroups.filter(g=>curTab==='active'?!g.closed:g.closed);
+  if(!list.length){
+    el.innerHTML=`<div style="color:#333;font-size:13px;text-align:center;padding:30px 0;">${curTab==='active'?'営業中のグループなし':'本日の履歴なし'}</div>`;
+    return;
+  }
+  if(curTab==='active'){
+    el.innerHTML=list.map(g=>{
+      const sub=g.orders.reduce((s,o)=>s+(o.price*o.qty),0);
+      return `<div class="gcard" onclick="openGroup(${g.id})">
+        <div style="flex:1;">
+          <div class="gname">${g.name}</div>
+          <div class="gmeta">${g.pax}名　指名：${g.shimei.length?g.shimei.join('・'):'なし'}</div>
+          <div class="gcard-actions">
+            <div class="gcard-kaikei-btn" onclick="event.stopPropagation();openKaikei(${g.id})">会計 →</div>
+          </div>
+        </div>
+        <div class="gprice"><div class="gprice-num">¥${Math.round(sub*1.1).toLocaleString()}</div><div class="gprice-sub">税込</div></div>
+      </div>`;
+    }).join('');
+  } else {
+    const sorted=[...list].sort((a,b)=>new Date(b.closedAt)-new Date(a.closedAt));
+    el.innerHTML=sorted.map(g=>{
+      const sub=g.orders.reduce((s,o)=>s+(o.price*o.qty),0);
+      const total=Math.round(sub*1.1);
+      const payLabel=g.payMethod==='cash'?'現金':'カード';
+      const payClass=g.payMethod==='cash'?'cash':'card';
+      const dt=new Date(g.closedAt);
+      const timeStr=fmtTime(dt);
+      return `<div class="gcard" onclick="openKaikei(${g.id})" style="opacity:0.75;">
+        <div style="flex:1;">
+          <div class="gname">${g.name}<span class="pay-badge ${payClass}">${payLabel}</span></div>
+          <div class="gmeta">${g.pax}名　指名：${g.shimei.length?g.shimei.join('・'):'なし'}</div>
+          <div class="hist-time">${timeStr} 会計済</div>
+        </div>
+        <div class="gprice"><div class="gprice-num">¥${total.toLocaleString()}</div><div class="gprice-sub">税込</div></div>
+      </div>`;
+    }).join('');
+  }
+}
+
+function toggleAddGroup(){const f=document.getElementById('addgroup-form');f.style.display=f.style.display==='none'?'block':'none';}
+
+function createGroup(){
+  const name=document.getElementById('gname-in').value.trim()||'新規';
+  const pax=parseInt(document.getElementById('gpax-in').value)||1;
+  const shimei=[...document.querySelectorAll('#shimei-sel .msbtn.sel')].map(el=>el.textContent);
+  groups.push({id:Date.now(),name,pax,shimei,orders:[],closed:false,sessionId:curSessionId});
+  document.getElementById('gname-in').value='';
+  document.getElementById('gpax-in').value='';
+  document.querySelectorAll('#shimei-sel .msbtn').forEach(el=>el.classList.remove('sel'));
+  document.getElementById('addgroup-form').style.display='none';
+  renderGroups();
+  saveData();
+}
+
+function openGroup(id){
+  curGroupId=id;curOrders=[];
+  const g=groups.find(x=>x.id===id);
+  document.getElementById('o-staff').textContent=curStaff;
+  document.getElementById('o-group').textContent=g.name;
+  updateCurTotal();
+  renderShimeiDisplay(g);
+  const all=STAFF.includes(curStaff)?STAFF:[...STAFF,curStaff];
+  document.getElementById('shimei-edit-list').innerHTML=all.map(s=>`<div class="msbtn${g.shimei.includes(s)?' sel':''}" onclick="this.classList.toggle('sel')">${s}</div>`).join('');
+  setWho('guest');
+  goTo('sc-order');
+}
+
+function renderShimeiDisplay(g){
+  const el=document.getElementById('shimei-display');
+  el.innerHTML=g.shimei.length?g.shimei.map(s=>`<span class="tag">${s}</span>`).join(''):'<span style="color:#444;font-size:12px;">指名なし</span>';
+}
+function toggleShimeiEdit(){const a=document.getElementById('shimei-edit-area');a.style.display=a.style.display==='none'?'block':'none';}
+function saveShimei(){
+  const g=groups.find(x=>x.id===curGroupId);
+  g.shimei=[...document.querySelectorAll('#shimei-edit-list .msbtn.sel')].map(el=>el.textContent);
+  renderShimeiDisplay(g);
+  document.getElementById('shimei-edit-area').style.display='none';
+  renderGroups();
+  saveData();
+}
+
+/* ---- Order ---- */
+function setWho(w){
+  curWho=w;
+  ['guest','self','other'].forEach(k=>document.getElementById('w-'+k).classList.remove('active'));
+  document.getElementById('w-'+w).classList.add('active');
+  document.getElementById('other-staff-sel').style.display=w==='other'?'block':'none';
+  if(w!=='other')curOtherStaff='';
+  const tabs=document.getElementById('cat-tabs');
+  if(w==='guest'){
+    tabs.innerHTML=`<div class="ctab active" onclick="showCat(this,'shochu')">焼酎</div><div class="ctab" onclick="showCat(this,'whiskey')">ウイスキー</div><div class="ctab" onclick="showCat(this,'champagne')">シャンパン</div><div class="ctab" onclick="showCat(this,'shot')">ショット</div><div class="ctab" onclick="showCat(this,'other')">その他</div>`;
+    showCat(tabs.querySelector('.ctab'),'shochu');
+  } else {
+    tabs.innerHTML=`<div class="ctab active" onclick="showCat(this,'shot')">ショット</div><div class="ctab" onclick="showCat(this,'champagne')">シャンパン</div><div class="ctab" onclick="showCat(this,'other')">その他</div>`;
+    showCat(tabs.querySelector('.ctab'),'shot');
+  }
+}
+function selOther(el,name){document.querySelectorAll('#other-staff-list .msbtn').forEach(e=>e.classList.remove('sel'));el.classList.add('sel');curOtherStaff=name;}
+
+function showCat(el,cat){
+  document.querySelectorAll('#cat-tabs .ctab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('custom-input-area').style.display=cat==='other'?'block':'none';
+  // スタッフ側のその他タブは自由入力のみ（固定メニューなし）
+  if(cat==='other'&&curWho!=='guest'){
+    document.getElementById('mlist').innerHTML='';
+    return;
+  }
+  document.getElementById('mlist').innerHTML=MENUS[cat].map(item=>{
+    const ex=curOrders.find(o=>o.name===item.n&&o.who===curWho);
+    const q=ex?ex.qty:0;
+    const key=item.n.replace(/[\s（）、。]/g,'_');
+    return `<div class="mitem"><div class="iname">${item.n}</div><div style="display:flex;align-items:center;gap:8px;"><span class="iprice">${item.p>0?'¥'+item.p.toLocaleString():'時価'}</span><div class="qctrl"><button class="qbtn" onclick="chQty('${item.n}',${item.p},-1)">−</button><span class="qnum" id="q-${key}">${q||''}</span><button class="qbtn plus" onclick="chQty('${item.n}',${item.p},1)">+</button></div></div></div>`;
+  }).join('');
+}
+
+function addCustomItem(){
+  const name=document.getElementById('custom-name').value.trim();
+  const price=parseInt(document.getElementById('custom-price').value)||0;
+  const qty=parseInt(document.getElementById('custom-qty').value)||1;
+  if(!name)return;
+  // 同名・同who・同価格があれば数量加算
+  const ex=curOrders.find(o=>o.name===name&&o.who===curWho&&o.price===price&&o.custom);
+  if(ex){ex.qty+=qty;}
+  else{curOrders.push({name,price,qty,who:curWho,staff:curWho==='self'?curStaff:curWho==='other'?curOtherStaff:'',custom:true});}
+  document.getElementById('custom-name').value='';
+  document.getElementById('custom-price').value='';
+  document.getElementById('custom-qty').value='1';
+  renderSummary();
+}
+
+function sendAndKaikei(){
+  if(curOrders.length>0){
+    const g=groups.find(x=>x.id===curGroupId);
+    curOrders.forEach(o=>g.orders.push({...o,ts:new Date().toISOString()}));
+    renderGroups();
+    saveData();
+    curOrders=[];
+  }
+  openKaikei(curGroupId);
+}
+
+function chQty(name,price,delta){
+  const who=curWho; // 'guest' / 'self' / 'other'
+  const staff=who==='self'?curStaff:who==='other'?curOtherStaff:'';
+  const ex=curOrders.find(o=>o.name===name&&o.who===who);
+  if(ex){
+    ex.qty+=delta;
+    if(ex.qty<=0)curOrders=curOrders.filter(o=>!(o.name===name&&o.who===who));
+  } else if(delta>0){
+    curOrders.push({name,price,qty:1,who,staff});
+  }
+  const el=document.getElementById('q-'+name.replace(/[\s（）、。]/g,'_'));
+  if(el){const o=curOrders.find(o=>o.name===name&&o.who===who);el.textContent=o?o.qty:'';}
+  renderSummary();
+}
+
+function renderSummary(){
+  const el=document.getElementById('orows');
+  const td=document.getElementById('ototaldiv');
+  const txd=document.getElementById('otaxdiv');
+  if(!curOrders.length){el.innerHTML='<span style="color:#444;font-size:12px;">まだ注文なし</span>';td.style.display='none';txd.style.display='none';return;}
+  let sub=0;
+  el.innerHTML=curOrders.map(o=>{
+    const label=o.who==='guest'?'お客様':o.staff||curStaff;
+    sub+=o.price*o.qty;
+    const priceStr=o.price>0?'¥'+(o.price*o.qty).toLocaleString():'時価';
+    const whoColor=o.who==='guest'?'#555':'#ff6b2b44';
+    const nameColor=o.who==='guest'?'#ccc':'#ff6b2b';
+    return `<div class="orow" style="border-left:2px solid ${whoColor};padding-left:6px;margin-bottom:2px;"><span style="color:${nameColor}">${o.name} ×${o.qty} <span style="color:#555;font-size:10px;">[${label}]</span></span><span>${priceStr}</span></div>`;
+  }).join('');
+  td.style.display='flex';
+  txd.style.display='flex';
+  document.getElementById('ototal').textContent='¥'+sub.toLocaleString();
+  document.getElementById('otax').textContent='¥'+Math.round(sub*1.1).toLocaleString();
+}
+
+function updateCurTotal(){
+  const g=groups.find(x=>x.id===curGroupId);
+  if(!g)return;
+  const sub=g.orders.reduce((s,o)=>s+(o.price*o.qty),0);
+  document.getElementById('o-cur').textContent='¥'+Math.round(sub*1.1).toLocaleString();
+}
+
+function sendOrder(){
+  if(!curOrders.length)return;
+  const g=groups.find(x=>x.id===curGroupId);
+  curOrders.forEach(o=>g.orders.push({...o,ts:new Date().toISOString()}));
+  document.getElementById('done-info').textContent=curStaff+' → '+g.name;
+  renderGroups();
+  saveData();
+  curOrders=[];
+  goTo('sc-done');
+}
+
+/* ---- 会計 ---- */
+function openKaikei(id){
+  curGroupId=id;
+  const g=groups.find(x=>x.id===id);
+  document.getElementById('k-gname').textContent=g.name;
+  document.getElementById('k-gmeta').textContent=g.pax+'名　指名：'+(g.shimei.length?g.shimei.join('・'):'なし');
+
+  const gEl=document.getElementById('k-guest-orders');
+  if(!g.orders.length){
+    gEl.innerHTML='<div style="color:#444;font-size:12px;padding:6px 0;">注文なし</div>';
+  } else {
+    const merged={};
+    g.orders.forEach(o=>{
+      const label=o.who==='guest'?'お客様':o.staff||curStaff;
+      const key=o.name+'__'+label;
+      if(!merged[key])merged[key]={name:o.name,price:o.price,qty:0,label};
+      merged[key].qty+=o.qty;
+    });
+    const canEdit=CAN_EDIT.includes(curStaff);
+    gEl.innerHTML=Object.values(merged).map((o,idx)=>`
+      <div class="kaikei-item">
+        <div style="flex:1;"><div class="kaikei-item-name">${o.name}</div><div class="kaikei-item-detail">${o.label}　×${o.qty}</div></div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="kaikei-item-price">${o.price>0?'¥'+(o.price*o.qty).toLocaleString():'時価'}</div>
+          ${canEdit&&!g.closed?`<button onclick="deleteOrderItem(${g.id},'${o.name}','${o.label}')" style="background:transparent;border:1px solid #333;border-radius:6px;padding:3px 8px;color:#555;font-size:11px;cursor:pointer;">削除</button>`:''}
+        </div>
+      </div>`).join('');
+  }
+
+  const sub=g.orders.reduce((s,o)=>s+(o.price*o.qty),0);
+  const tax=Math.round(sub*0.1);
+  const total=sub+tax;
+  document.getElementById('k-subtotal').textContent='¥'+sub.toLocaleString();
+  document.getElementById('k-tax').textContent='¥'+tax.toLocaleString();
+  document.getElementById('k-total').textContent='¥'+total.toLocaleString();
+
+  const closeBtn=document.getElementById('k-close-btn');
+  const closedMsg=document.getElementById('k-closed-msg');
+  if(g.closed){
+    closeBtn.style.display='none';
+    const payLabel=g.payMethod==='cash'?'💴 現金':'💳 カード';
+    const dt=new Date(g.closedAt);
+    closedMsg.style.display='block';
+    closedMsg.textContent=`会計済　${payLabel}　${fmtTime(dt)}`;
+  } else {
+    closeBtn.style.display='block';
+    closedMsg.style.display='none';
+    document.getElementById('pay-amount-disp').textContent='¥'+total.toLocaleString();
+  }
+  goTo('sc-kaikei');
+}
+
+function openPayModal(){document.getElementById('pay-modal').classList.add('show');}
+function closePayModal(){document.getElementById('pay-modal').classList.remove('show');}
+
+function deleteOrderItem(groupId, name, label){
+  const g=groups.find(x=>x.id===groupId);
+  if(!g)return;
+  // labelから誰の注文か特定してguestかstaffか判定
+  const isGuest=label==='お客様';
+  // 同名・同ラベルの注文を1件分削除（qtyを1減らす、0になったら削除）
+  let found=false;
+  for(let i=0;i<g.orders.length;i++){
+    const o=g.orders[i];
+    const oLabel=o.who==='guest'?'お客様':o.staff||curStaff;
+    if(o.name===name&&oLabel===label){
+      // 削除ログ記録
+      if(!g.deleteLogs)g.deleteLogs=[];
+      g.deleteLogs.push({name,label,qty:1,price:o.price,deletedBy:curStaff,ts:new Date().toISOString()});
+      o.qty-=1;
+      if(o.qty<=0)g.orders.splice(i,1);
+      found=true;
+      break;
+    }
+  }
+  if(!found)return;
+  saveData();
+  renderGroups();
+  openKaikei(groupId); // 画面を更新
+}
+
+function closeGroup(method){
+  closePayModal();
+  const g=groups.find(x=>x.id===curGroupId);
+  g.closed=true;
+  g.closedAt=new Date().toISOString();
+  g.payMethod=method;
+  saveData();
+  renderGroups();
+  document.getElementById('k-close-btn').style.display='none';
+  const payLabel=method==='cash'?'💴 現金':'💳 カード';
+  const closedMsg=document.getElementById('k-closed-msg');
+  closedMsg.style.display='block';
+  closedMsg.textContent='会計済　'+payLabel;
+  setTimeout(()=>goTo('sc-groups'),600);
+}
+
+/* ---- Init ---- */
+loadData();
+// 起動時：進行中のセッションがあればスタッフ選択へ
+if(curSessionId){
+  const session=sessions.find(s=>s.id===curSessionId);
+  if(session&&!session.closedAt){
+    const d=new Date(session.startedAt);
+    document.getElementById('session-date-badge').textContent=fmtDateJP(d);
+    document.getElementById('header-close-btn').style.display='block';
+    goTo('sc-staff');
+  } else {
+    curSessionId=null;
+    initOpenScreen();
+  }
+} else {
+  initOpenScreen();
+}
+</script>
+</body>
+</html>
