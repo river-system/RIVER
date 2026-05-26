@@ -368,15 +368,17 @@ body{background:#050505;min-height:100vh;display:flex;justify-content:center;pad
 
 <script>
 const STAFF=['なおと','りん','りょうせい','そうたろう','あやと','ゆうせい','としき','かなた','けんしろう','いっこう'];
-const CAN_EDIT=['りいや','なおと','りん']; // 修正権限あり
-const CAN_CLOSE=['りいや','なおと','りん']; // 閉店権限あり
+const CAN_EDIT=['りいや']; // 注文削除権限あり（オーナーのみ）
+const CAN_CLOSE=['なおと','りん']; // 閉店権限あり（りいやは別URL）
+const CAN_KAIKEI=['なおと','りん']; // 会計締め権限あり（りいやは別URL）
 const DAYS=['日','月','火','水','木','金','土'];
 const MENUS={
-  system:[{n:'チャージ',p:1500},{n:'飲み放題',p:3000},{n:'お菓子',p:0},{n:'ダーツ',p:0}],
-  glass:[{n:'割りもの',p:700},{n:'グラス',p:700}],
-  shot:[{n:'テキーラ クエルボ',p:500},{n:'クライナー',p:700},{n:'コカボム',p:1000},{n:'アネホ1800',p:10000}],
-  champagne:[{n:'ヴーヴイエロー',p:20000},{n:'モエ白',p:12000},{n:'モエロゼ',p:18000},{n:'モエネクター',p:22000},{n:'モエアイス',p:22000},{n:'ドンペリ白',p:80000},{n:'ドンペリロゼ',p:120000},{n:'アルマンドゴールド',p:140000},{n:'アルマンドロゼ',p:180000},{n:'ソウメイ',p:70000}],
-  bottle:[{n:'鏡月',p:3000},{n:'チャミスル',p:3000},{n:'TAKUMA',p:3000},{n:'プレミアム鏡月',p:4000},{n:'黒桐島',p:4000},{n:'吉四六',p:5500},{n:'角',p:4000},{n:'ジャックダニエル',p:6000},{n:'シーバスミズナラ',p:9500},{n:'響ブレンダーズ',p:30000},{n:'山崎（時価）',p:0},{n:'山崎12年（時価）',p:0}]
+  system:[{n:'チャーム',p:1500},{n:'飲み放題',p:3000},{n:'延長',p:1000},{n:'ダーツ',p:100}],
+  glass:[{n:'割りもの',p:700},{n:'グラス',p:700},{n:'缶',p:1000},{n:'瓶ビール',p:1000},{n:'チャミスル',p:3500}],
+  glass_staff:[{n:'グラス',p:700},{n:'缶',p:1000}],
+  shot:[{n:'テキーラ クエルボ',p:500},{n:'クライナー',p:700},{n:'コカボム',p:1000},{n:'アネホ',p:1000},{n:'観覧車 クエルボ',p:5000},{n:'観覧車 アネホ',p:10000},{n:'シップ クエルボ',p:10000},{n:'シップ アネホ',p:20000}],
+  champagne:[{n:'シャブリ',p:10000},{n:'ヴーヴイエロー',p:20000},{n:'ペリエ白',p:20000},{n:'モエアイス',p:24000},{n:'モエピカ',p:28000},{n:'モエネク',p:28000},{n:'ペリエロゼ',p:35000},{n:'ウルトラ',p:38000},{n:'ソウメイ',p:70000},{n:'ベルエポ',p:70000},{n:'ドンペリ白',p:80000},{n:'ドンペリロゼ',p:120000},{n:'アルマンドゴールド',p:140000},{n:'アルマンドロゼ',p:180000}],
+  bottle:[{n:'鏡月',p:3000},{n:'TAKUMA',p:3000},{n:'プレミアム鏡月',p:4000},{n:'黒桐島',p:4000},{n:'吉四六',p:5500},{n:'ジャックダニエル',p:6000},{n:'シーバスミズナラ',p:9500},{n:'響ブレンダーズ',p:35000},{n:'角',p:45000},{n:'山崎（時価）',p:0},{n:'山崎12年（時価）',p:0}]
 };
 
 let curStaff='',groups=[],sessions=[],curGroupId=null,curOrders=[],curWho='guest',curOtherStaff='',curTab='active',curSessionId=null;
@@ -645,7 +647,7 @@ function setWho(w){
     tabs.innerHTML=`<div class="ctab active" onclick="showCat(this,'system')">システム</div><div class="ctab" onclick="showCat(this,'glass')">グラス</div><div class="ctab" onclick="showCat(this,'shot')">ショット</div><div class="ctab" onclick="showCat(this,'champagne')">シャンパン</div><div class="ctab" onclick="showCat(this,'bottle')">ボトル</div>`;
     showCat(tabs.querySelector('.ctab'),'system');
   } else {
-    tabs.innerHTML=`<div class="ctab active" onclick="showCat(this,'shot')">ショット</div><div class="ctab" onclick="showCat(this,'champagne')">シャンパン</div><div class="ctab" onclick="showCat(this,'system')">その他</div>`;
+    tabs.innerHTML=`<div class="ctab active" onclick="showCat(this,'shot')">ショット</div><div class="ctab" onclick="showCat(this,'champagne')">シャンパン</div><div class="ctab" onclick="showCat(this,'glass')">グラス</div><div class="ctab" onclick="showCat(this,'system')">その他</div>`;
     showCat(tabs.querySelector('.ctab'),'shot');
   }
 }
@@ -660,7 +662,9 @@ function showCat(el,cat){
     document.getElementById('mlist').innerHTML='';
     return;
   }
-  document.getElementById('mlist').innerHTML=MENUS[cat].map(item=>{
+  // glassはスタッフ側は缶・グラスのみ
+  const menuKey=(cat==='glass'&&curWho!=='guest')?'glass_staff':cat;
+  document.getElementById('mlist').innerHTML=(MENUS[menuKey]||[]).map(item=>{
     const ex=curOrders.find(o=>o.name===item.n&&o.who===curWho);
     const q=ex?ex.qty:0;
     const key=item.n.replace(/[\s（）、。]/g,'_');
@@ -791,10 +795,14 @@ function openKaikei(id){
     const dt=new Date(g.closedAt);
     closedMsg.style.display='block';
     closedMsg.textContent=`会計済　${payLabel}　${fmtTime(dt)}`;
-  } else {
+  } else if(CAN_KAIKEI.includes(curStaff)){
     closeBtn.style.display='block';
     closedMsg.style.display='none';
     document.getElementById('pay-amount-disp').textContent='¥'+total.toLocaleString();
+  } else {
+    closeBtn.style.display='none';
+    closedMsg.style.display='block';
+    closedMsg.textContent='会計締めはなおと・りんが行います';
   }
   goTo('sc-kaikei');
 }
