@@ -466,17 +466,23 @@ async function sbFetch(path, method='GET', body=null){
 
 /* ---- DB操作 ---- */
 async function saveSession(session){
-  const data={id:session.id,started_at:session.startedAt,closed_at:session.closedAt,date_label:session.dateLabel};
-  // まずINSERT、失敗したらPATCH（更新）
-  const r=await sbFetch('sessions','POST',data);
-  if(!r) await sbFetch('sessions?id=eq.'+session.id,'PATCH',data);
+  const data={closed_at:session.closedAt,date_label:session.dateLabel};
+  await sbFetch('sessions?id=eq.'+session.id,'PATCH',data);
+}
+
+async function insertSession(session){
+  const data={id:session.id,started_at:session.startedAt,closed_at:null,date_label:session.dateLabel};
+  await sbFetch('sessions','POST',data);
 }
 
 async function saveGroup(g){
-  const data={id:g.id,session_id:g.sessionId,name:g.name,pax:g.pax,shimei:g.shimei,closed:g.closed,closed_at:g.closedAt||null,pay_method:g.payMethod||null,delete_logs:g.deleteLogs||[]};
-  // まずINSERT、失敗したらPATCH（更新）
-  const r=await sbFetch('groups','POST',data);
-  if(!r) await sbFetch('groups?id=eq.'+g.id,'PATCH',data);
+  const data={session_id:g.sessionId,name:g.name,pax:g.pax,shimei:g.shimei,closed:g.closed,closed_at:g.closedAt||null,pay_method:g.payMethod||null,delete_logs:g.deleteLogs||[]};
+  await sbFetch('groups?id=eq.'+g.id,'PATCH',data);
+}
+
+async function insertGroup(g){
+  const data={id:g.id,session_id:g.sessionId,name:g.name,pax:g.pax,shimei:g.shimei,closed:false,delete_logs:[]};
+  await sbFetch('groups','POST',data);
 }
 
 async function saveOrders(groupId, orders){
@@ -539,7 +545,7 @@ async function startSession(){
   const session={id:curSessionId,startedAt:now.toISOString(),closedAt:null,dateLabel:fmtDate(now)};
   sessions.push(session);
   saveLocalSession();
-  await saveSession(session);
+  await insertSession(session);
   document.getElementById('session-date-badge').textContent=fmtDateJP(now);
   document.getElementById('header-close-btn').style.display='none';
   goTo('sc-staff');
@@ -711,7 +717,7 @@ async function createGroup(){
   document.querySelectorAll('#shimei-sel .msbtn').forEach(el=>el.classList.remove('sel'));
   document.getElementById('addgroup-form').style.display='none';
   renderGroups();
-  await saveGroup(g);
+  await insertGroup(g);
 }
 
 function openGroup(id){
