@@ -107,6 +107,7 @@ body{background:#050505;min-height:100vh;display:flex;justify-content:center;pad
     <div class="tab active" id="tab-today" onclick="switchTab('today')">本日</div>
     <div class="tab" id="tab-history" onclick="switchTab('history')">過去の営業</div>
     <div class="tab" id="tab-dellog" onclick="switchTab('dellog')">削除ログ</div>
+    <div class="tab" id="tab-staff" onclick="switchTab('staff')">スタッフ</div>
   </div>
 
   <div id="tab-content"></div>
@@ -137,11 +138,17 @@ let groups=[],sessions=[],curSessionId=null,curTab='today';
 const SUPABASE_URL='https://haqenuqasavvgzyvufuv.supabase.co';
 const SUPABASE_KEY='sb_publishable_SwJYz-lUWQw23jLGdK1GpA_61gn0L1y';
 
-async function sbFetch(path){
-  const res=await fetch(SUPABASE_URL+'/rest/v1/'+path,{headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
-  if(!res.ok)return null;
-  const text=await res.text();
-  return text?JSON.parse(text):null;
+async function sbFetch(path, method='GET', body=null){
+  const headers={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'};
+  if(method==='POST'||method==='PATCH')headers['Prefer']='return=representation';
+  const opts={method,headers};
+  if(body)opts.body=JSON.stringify(body);
+  try{
+    const res=await fetch(SUPABASE_URL+'/rest/v1/'+path,opts);
+    if(!res.ok)return null;
+    const text=await res.text();
+    return text?JSON.parse(text):null;
+  }catch(e){return null;}
 }
 
 async function loadData(){
@@ -181,9 +188,9 @@ function renderSummary(sessionGroups,sessionId){
   document.getElementById('sales-groups').textContent=`${sales.totalCount}グループ　会計済 ${sales.closedCount}組`;
 }
 
-function switchTab(tab){
+async function switchTab(tab){
   curTab=tab;
-  ['today','history','dellog'].forEach(t=>{
+  ['today','history','dellog','staff'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('active',t===tab);
   });
   renderTab();
@@ -208,6 +215,9 @@ function renderTab(){
         <div class="session-sales">¥${sales.total.toLocaleString()} <span style="font-size:10px;color:#555;">（現金¥${sales.cash.toLocaleString()} / カード¥${sales.card.toLocaleString()}）</span></div>
       </div>`;
     }).join('');
+  } else if(curTab==='staff'){
+    await renderStaffTab();
+    return;
   } else if(curTab==='dellog'){
     const logs=[];
     groups.forEach(g=>{
@@ -308,6 +318,56 @@ function showSessionDetail(sessionId){
   html+=sg.map(g=>renderGroupCard(g)).join('');
   document.getElementById('detail-content').innerHTML=html;
   document.getElementById('detail-modal').classList.add('show');
+}
+
+/* ---- Staff Management ---- */
+let staffList=[];
+
+async function loadStaffList(){
+  const data=await sbFetch('staff?order=id.asc');
+  if(data)staffList=data;
+}
+
+async function renderStaffTab(){
+  await loadStaffList();
+  const el=document.getElementById('tab-content');
+  el.innerHTML=`
+    <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:14px;margin-bottom:12px;">
+      <div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">スタッフを追加</div>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="new-staff-name" placeholder="名前" style="background:#111;border:1px solid #333;border-radius:8px;padding:8px 12px;color:#fff;font-size:13px;flex:1;" />
+        <button onclick="addStaff()" style="background:#ff6b2b;border:none;border-radius:8px;padding:8px 14px;color:#fff;font-size:13px;cursor:pointer;">追加</button>
+      </div>
+    </div>
+    <div id="staff-list-content"></div>
+  `;
+  renderStaffList();
+}
+
+function renderStaffList(){
+  const el=document.getElementById('staff-list-content');
+  if(!el)return;
+  el.innerHTML=staffList.map(s=>`
+    <div style="background:#1a1a1a;border:1px solid ${s.active?'#2a2a2a':'#111'};border-radius:10px;padding:12px 14px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;opacity:${s.active?1:0.5};">
+      <div>
+        <div style="font-size:14px;color:${s.active?'#fff':'#555'};">${s.name}</div>
+        <div style="font-size:10px;color:#555;margin-top:2px;">${s.can_kaikei?'会計締め ':''}${s.can_close?'閉店 ':''}${s.can_edit?'削除 ':''}</div>
+      </div>
+      <button onclick="toggleStaffActive(${s.id},${s.active})" style="background:transparent;border:1px solid #333;border-radius:6px;padding:4px 10px;color:#555;font-size:11px;cursor:pointer;">${s.active?'無効化':'有効化'}</button>
+    </div>`).join('');
+}
+
+async function addStaff(){
+  const name=document.getElementById('new-staff-name').value.trim();
+  if(!name)return;
+  await sbFetch('staff','POST',{name,role:'temp',active:true});
+  document.getElementById('new-staff-name').value='';
+  await renderStaffTab();
+}
+
+async function toggleStaffActive(id,current){
+  await sbFetch('staff?id=eq.'+id,'PATCH',{active:!current});
+  await renderStaffTab();
 }
 
 function closeDetail(){

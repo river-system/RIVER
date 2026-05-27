@@ -198,16 +198,7 @@ body{background:#050505;min-height:100vh;display:flex;justify-content:center;pad
     <div id="session-date-badge" class="session-badge"></div>
   </div>
   <div class="staff-grid">
-    <div class="sbtn" onclick="selStaff('なおと')"><div class="av">な</div><div class="sname">なおと</div><div class="srole">レギュラー</div></div>
-    <div class="sbtn" onclick="selStaff('りん')"><div class="av">り</div><div class="sname">りん</div><div class="srole">レギュラー</div></div>
-    <div class="sbtn" onclick="selStaff('りょうせい')"><div class="av">り</div><div class="sname">りょうせい</div></div>
-    <div class="sbtn" onclick="selStaff('そうたろう')"><div class="av">そ</div><div class="sname">そうたろう</div></div>
-    <div class="sbtn" onclick="selStaff('あやと')"><div class="av">あ</div><div class="sname">あやと</div></div>
-    <div class="sbtn" onclick="selStaff('ゆうせい')"><div class="av">ゆ</div><div class="sname">ゆうせい</div></div>
-    <div class="sbtn" onclick="selStaff('としき')"><div class="av">と</div><div class="sname">としき</div></div>
-    <div class="sbtn" onclick="selStaff('かなた')"><div class="av">か</div><div class="sname">かなた</div></div>
-    <div class="sbtn" onclick="selStaff('けんしろう')"><div class="av">け</div><div class="sname">けんしろう</div></div>
-    <div class="sbtn" onclick="selStaff('いっこう')"><div class="av">い</div><div class="sname">いっこう</div></div>
+    <div id="staff-grid-dynamic"></div>
     <div class="newbtn" onclick="toggleNew()"><div class="av" style="background:#111;border-color:#333;color:#333;font-size:20px;">+</div><div class="sname" style="color:#444;font-size:11px;">新しいスタッフ</div></div>
     <div class="ninput" id="ninput" style="grid-column:span 3;">
       <input type="text" id="nname" placeholder="名前を入力..." />
@@ -431,10 +422,19 @@ body{background:#050505;min-height:100vh;display:flex;justify-content:center;pad
 </div>
 
 <script>
-const STAFF=['なおと','りん','りょうせい','そうたろう','あやと','ゆうせい','としき','かなた','けんしろう','いっこう'];
-const CAN_EDIT=['りいや']; // 注文削除権限あり（オーナーのみ）
-const CAN_CLOSE=['なおと','りん']; // 閉店権限あり（りいやは別URL）
-const CAN_KAIKEI=['なおと','りん']; // 会計締め権限あり（りいやは別URL）
+let STAFF=[];
+let CAN_EDIT=[];
+let CAN_CLOSE=[];
+let CAN_KAIKEI=[];
+
+async function loadStaff(){
+  const data=await sbFetch('staff?active=eq.true&order=id.asc');
+  if(!data)return;
+  STAFF=data.map(s=>s.name);
+  CAN_EDIT=data.filter(s=>s.can_edit).map(s=>s.name);
+  CAN_CLOSE=data.filter(s=>s.can_close).map(s=>s.name);
+  CAN_KAIKEI=data.filter(s=>s.can_kaikei).map(s=>s.name);
+}
 const DAYS=['日','月','火','水','木','金','土'];
 const MENUS={
   system:[{n:'チャーム',p:1500},{n:'飲み放題',p:3000},{n:'延長',p:1000},{n:'ダーツ',p:100}],
@@ -613,6 +613,18 @@ async function confirmClose(){
   goTo('sc-closed');
 }
 
+/* ---- Staff Grid ---- */
+function renderStaffGrid(){
+  const el=document.getElementById('staff-grid-dynamic');
+  if(!el)return;
+  el.innerHTML=STAFF.map(name=>{
+    const initial=name[0];
+    return `<div class="sbtn" onclick="selStaff('${name}')"><div class="av">${initial}</div><div class="sname">${name}</div></div>`;
+  }).join('');
+  // shimei-selとother-staff-listも更新
+  document.getElementById('shimei-sel').innerHTML=STAFF.map(s=>`<div class="msbtn" onclick="this.classList.toggle('sel')">${s}</div>`).join('');
+}
+
 /* ---- Logout ---- */
 function tryLogout(){
   if(!curStaff)return;
@@ -629,7 +641,17 @@ function tryLogout(){
 /* ---- Navigation ---- */
 function goTo(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
 function toggleNew(){const n=document.getElementById('ninput');n.classList.toggle('show');if(n.classList.contains('show'))document.getElementById('nname').focus();}
-function addTemp(){const v=document.getElementById('nname').value.trim();if(!v)return;selStaff(v);document.getElementById('nname').value='';document.getElementById('ninput').classList.remove('show');}
+async function addTemp(){
+  const v=document.getElementById('nname').value.trim();
+  if(!v)return;
+  // Supabaseに追加
+  await sbFetch('staff','POST',{name:v,role:'temp',active:true});
+  STAFF.push(v);
+  renderStaffGrid();
+  selStaff(v);
+  document.getElementById('nname').value='';
+  document.getElementById('ninput').classList.remove('show');
+}
 
 /* ---- Tab ---- */
 function switchTab(tab){
@@ -984,6 +1006,7 @@ function closeTutorial(){
 /* ---- Init ---- */
 async function init(){
   try{
+    await loadStaff();
     await loadData();
   }catch(e){
     console.error('init error:',e);
@@ -1007,6 +1030,7 @@ async function init(){
   } else {
     initOpenScreen();
   }
+  renderStaffGrid();
 }
 init();
 </script>
