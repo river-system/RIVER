@@ -12,8 +12,13 @@ body{background:#050505;min-height:100vh;display:flex;justify-content:center;pad
 .logo{font-size:12px;letter-spacing:3px;font-weight:500;}
 .logo span{color:#ff6b2b;}
 .owner-badge{background:#1f1200;border:1px solid #ff6b2b44;border-radius:6px;padding:2px 8px;font-size:10px;color:#ff6b2b;}
-.screen{padding:16px;}
-.stitle{font-size:10px;letter-spacing:2px;color:#555;margin-bottom:14px;}
+.screen{display:none;padding:16px 18px 16px 16px;overflow-x:hidden;}
+.screen.active{display:block;}
+
+/* メインタブ */
+.main-tabs{display:flex;gap:0;background:#111;border-radius:10px;padding:3px;margin-bottom:14px;}
+.main-tab{flex:1;text-align:center;padding:9px 4px;font-size:11px;color:#555;cursor:pointer;border-radius:8px;}
+.main-tab.active{background:#1a1a1a;color:#fff;}
 
 /* 売上サマリー */
 .sales-card{background:#111;border:1px solid #222;border-radius:16px;padding:18px;margin-bottom:12px;}
@@ -28,30 +33,31 @@ body{background:#050505;min-height:100vh;display:flex;justify-content:center;pad
 .sales-split-val.card{color:#5b9cf6;}
 .sales-groups{font-size:11px;color:#555;margin-top:12px;padding-top:12px;border-top:1px solid #1a1a1a;}
 
-/* タブ */
-.tabs{display:flex;gap:0;margin-bottom:14px;background:#111;border-radius:10px;padding:3px;}
-.tab{flex:1;text-align:center;padding:8px;font-size:12px;color:#555;cursor:pointer;border-radius:8px;}
-.tab.active{background:#1a1a1a;color:#fff;}
+/* サブタブ（売上内） */
+.sub-tabs{display:flex;gap:0;background:#111;border-radius:10px;padding:3px;margin-bottom:14px;}
+.sub-tab{flex:1;text-align:center;padding:8px;font-size:11px;color:#555;cursor:pointer;border-radius:8px;}
+.sub-tab.active{background:#1a1a1a;color:#fff;}
 
 /* グループカード */
 .gcard{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:14px;margin-bottom:8px;cursor:pointer;}
-.gcard.closed{border-color:#1a1a1a;}
-.gcard-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
+.gcard.closed{border-color:#1a1a1a;opacity:0.8;}
+.gcard-top{display:flex;justify-content:space-between;align-items:flex-start;}
 .gcard-name{font-size:15px;font-weight:500;color:#fff;}
-.gcard-price{font-size:14px;font-weight:600;color:#ff6b2b;}
-.gcard-meta{font-size:11px;color:#555;}
+.gcard-price{font-size:14px;font-weight:600;color:#ff6b2b;flex-shrink:0;margin-left:8px;}
+.gcard-meta{font-size:11px;color:#555;margin-top:3px;}
 .pay-badge{display:inline-block;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:500;margin-left:6px;vertical-align:middle;}
 .pay-badge.cash{background:#1a2a1a;color:#4caf50;}
 .pay-badge.card{background:#1a1f2a;color:#5b9cf6;}
 .pay-badge.open{background:#1f1200;color:#ff6b2b;}
+.gcard-actions{display:flex;gap:6px;margin-top:8px;}
+.gcard-kaikei-btn{background:#ff6b2b22;border:1px solid #ff6b2b44;border-radius:8px;padding:5px 10px;font-size:11px;color:#ff6b2b;cursor:pointer;}
 
-/* 注文詳細 */
+/* 詳細モーダル */
 .detail-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:100;overflow-y:auto;}
 .detail-modal.show{display:block;}
 .detail-sheet{background:#0a0a0a;min-height:100vh;max-width:420px;margin:0 auto;padding:16px;}
 .detail-header{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
 .detail-back{background:transparent;border:1px solid #2a2a2a;border-radius:8px;padding:6px 12px;color:#555;font-size:11px;cursor:pointer;}
-.detail-title{font-size:14px;font-weight:500;color:#fff;}
 .order-item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #111;}
 .order-item:last-child{border-bottom:none;}
 .order-name{font-size:13px;color:#ccc;}
@@ -62,83 +68,285 @@ body{background:#050505;min-height:100vh;display:flex;justify-content:center;pad
 .total-row{display:flex;justify-content:space-between;font-size:12px;color:#666;padding:4px 0;}
 .total-row.big{font-size:16px;font-weight:600;color:#fff;border-top:1px solid #222;margin-top:8px;padding-top:10px;}
 .total-row.tax{color:#ff6b2b;}
-
-/* 削除ログ */
 .del-log{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:10px 12px;margin-bottom:6px;}
 .del-log-name{font-size:13px;color:#e53935;}
 .del-log-meta{font-size:10px;color:#555;margin-top:3px;}
-
-/* セッション選択 */
 .session-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;}
-.session-card.active-session{border-color:#ff6b2b44;}
 .session-date{font-size:14px;font-weight:500;color:#fff;}
 .session-meta{font-size:11px;color:#555;margin-top:3px;}
 .session-sales{font-size:13px;color:#ff6b2b;font-weight:500;margin-top:4px;}
+
+/* 注文入力（スタッフ画面と共通） */
+.stitle{font-size:10px;letter-spacing:2px;color:#555;margin-bottom:14px;}
+.group-list{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;}
+.addgroup{background:#111;border:2px dashed #333;border-radius:12px;padding:16px;text-align:center;cursor:pointer;color:#444;font-size:13px;}
+.modal-bg{background:#151515;border:1px solid #333;border-radius:16px;padding:16px;margin-bottom:12px;}
+.field{margin-bottom:12px;}
+.field label{font-size:10px;color:#555;display:block;margin-bottom:6px;letter-spacing:1px;}
+.field input{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:10px 12px;color:#fff;font-size:14px;width:100%;}
+.field input::placeholder{color:#333;}
+.mini-staff{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;}
+.msbtn{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:20px;padding:6px 12px;cursor:pointer;font-size:12px;color:#888;}
+.msbtn.sel{background:#1f1200;border-color:#ff6b2b;color:#ff6b2b;}
+.who-sel{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px;}
+.wbtn{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:14px 6px;text-align:center;cursor:pointer;font-size:13px;color:#888;}
+.wbtn.active{background:#1f1200;border-color:#ff6b2b;color:#ff6b2b;}
+.cat-tabs{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding:2px 2px 4px 2px;}
+.ctab{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:20px;padding:5px 12px;font-size:11px;color:#666;cursor:pointer;white-space:nowrap;flex-shrink:0;}
+.ctab.active{background:#ff6b2b;border-color:#ff6b2b;color:#fff;}
+.mlist{display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;}
+.mitem{background:#1a1a1a;border:1px solid #222;border-radius:10px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;}
+.iname{font-size:13px;color:#ddd;}
+.iprice{font-size:12px;color:#ff6b2b;}
+.qctrl{display:flex;align-items:center;gap:6px;}
+.qbtn{background:#222;border:1px solid #333;border-radius:6px;width:32px;height:32px;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.qbtn.plus{background:#ff6b2b;border-color:#ff6b2b;}
+.qnum{font-size:13px;color:#fff;min-width:18px;text-align:center;}
+.osummary{background:#111;border:1px solid #222;border-radius:12px;padding:12px;margin-top:12px;}
+.orow{display:flex;justify-content:space-between;font-size:12px;color:#888;padding:3px 0;}
+.ototal{display:flex;justify-content:space-between;font-size:14px;font-weight:500;color:#fff;border-top:1px solid #222;margin-top:8px;padding-top:8px;}
+.otax{display:flex;justify-content:space-between;font-size:11px;color:#ff6b2b;padding-top:4px;}
+.sendbtn{background:#ff6b2b;border:none;border-radius:12px;width:100%;padding:13px;color:#fff;font-size:14px;font-weight:500;margin-top:12px;cursor:pointer;}
+.backbtn{background:transparent;border:1px solid #2a2a2a;border-radius:8px;padding:6px 12px;color:#555;font-size:11px;cursor:pointer;}
+.ibar{background:#111;border:1px solid #1a1a1a;border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;margin-bottom:16px;}
+.ibar span{font-size:11px;color:#555;}
+.ibar strong{color:#ff6b2b;font-size:12px;}
+.tag{display:inline-block;background:#1f1200;border:1px solid #ff6b2b44;border-radius:20px;padding:2px 8px;font-size:10px;color:#ff6b2b;margin:2px;}
+.edit-shimei{font-size:11px;color:#ff6b2b;cursor:pointer;margin-left:8px;}
+
+/* 会計 */
+.kaikei-header{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:14px 16px;margin-bottom:12px;}
+.kaikei-gname{font-size:18px;font-weight:600;color:#fff;margin-bottom:4px;}
+.kaikei-meta{font-size:11px;color:#555;}
+.kaikei-section{margin-bottom:14px;}
+.kaikei-section-title{font-size:10px;letter-spacing:2px;color:#555;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #1a1a1a;}
+.kaikei-item{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #111;}
+.kaikei-item:last-child{border-bottom:none;}
+.kaikei-item-name{font-size:13px;color:#ccc;}
+.kaikei-item-detail{font-size:10px;color:#555;margin-top:2px;}
+.kaikei-item-price{font-size:13px;color:#fff;font-weight:500;}
+.kaikei-total-box{background:#111;border:1px solid #222;border-radius:12px;padding:14px;}
+.kaikei-row{display:flex;justify-content:space-between;font-size:12px;color:#666;padding:4px 0;}
+.kaikei-row.big{font-size:16px;font-weight:600;color:#fff;border-top:1px solid #222;margin-top:8px;padding-top:10px;}
+.kaikei-row.tax{color:#ff6b2b;}
+.close-btn{background:transparent;border:2px solid #ff6b2b;border-radius:12px;width:100%;padding:13px;color:#ff6b2b;font-size:14px;font-weight:600;margin-top:12px;cursor:pointer;}
+
+/* 支払いモーダル */
+.pay-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:200;align-items:flex-end;justify-content:center;}
+.pay-modal.show{display:flex;}
+.pay-sheet{background:#1a1a1a;border-radius:20px 20px 0 0;padding:24px 20px 40px;width:100%;max-width:420px;}
+.pay-title{font-size:11px;letter-spacing:2px;color:#555;text-align:center;margin-bottom:10px;}
+.pay-amount{font-size:32px;font-weight:700;color:#fff;text-align:center;margin-bottom:24px;}
+.pay-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.pay-btn{border:none;border-radius:12px;padding:18px;font-size:15px;font-weight:600;cursor:pointer;}
+.pay-btn.cash{background:#252525;color:#4caf50;border:1px solid #4caf5033;}
+.pay-btn.card{background:#1a1f2a;color:#5b9cf6;border:1px solid #5b9cf633;}
+.pay-cancel{background:transparent;border:none;color:#444;font-size:12px;width:100%;margin-top:16px;cursor:pointer;padding:8px;}
+
+/* スタッフ管理 */
+.staff-item{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:12px 14px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;}
 </style>
 </head>
 <body>
 <div class="app">
 <div class="header">
   <div class="logo">BAR <span>RIVER</span></div>
-  <div class="owner-badge">OWNER</div>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <div class="owner-badge">OWNER</div>
+    <div id="o-session-badge" style="font-size:10px;color:#555;"></div>
+  </div>
 </div>
 
-<div class="screen">
-  <!-- 売上サマリー -->
+<!-- メインタブ -->
+<div style="padding:12px 16px 0;background:#0a0a0a;">
+  <div class="main-tabs" id="main-tabs">
+    <div class="main-tab active" data-tab="order">注文入力</div>
+    <div class="main-tab" data-tab="sales">売上確認</div>
+    <div class="main-tab" data-tab="staff-mgmt">スタッフ</div>
+  </div>
+</div>
+
+<!-- 注文入力タブ -->
+<div class="screen active" id="sc-order-tab">
+  <!-- グループ一覧 -->
+  <div id="o-groups-view">
+    <div class="stitle">お客様グループ</div>
+    <div class="group-list" id="o-glist"></div>
+    <div class="addgroup" id="o-addgroup-btn">＋ 新しいグループを追加</div>
+    <div id="o-addgroup-form" style="display:none;margin-top:10px;">
+      <div class="modal-bg">
+        <div class="field"><label>お客様名</label><input type="text" id="o-gname-in" placeholder="例：新規・A様グループ" /></div>
+        <div class="field"><label>人数</label><input type="number" id="o-gpax-in" placeholder="1" min="1" style="width:80px;" /></div>
+        <div class="field"><label>指名スタッフ（複数可）</label><div class="mini-staff" id="o-shimei-sel"></div></div>
+        <button class="sendbtn" onclick="oCreateGroup()" style="margin-top:0;">グループを作成 →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 注文入力 -->
+  <div id="o-order-view" style="display:none;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+      <button class="backbtn" onclick="oBackToGroups()">← 戻る</button>
+      <div class="stitle" style="margin:0;">注文入力</div>
+    </div>
+    <div class="ibar">
+      <span>担当 <strong>りいや</strong></span>
+      <span>グループ <strong id="o-cur-group">—</strong></span>
+      <span>税込 <strong id="o-cur-total">¥0</strong></span>
+    </div>
+    <div style="margin-bottom:10px;">
+      <div style="font-size:10px;letter-spacing:1px;color:#555;margin-bottom:8px;">指名スタッフ <span class="edit-shimei" onclick="oToggleShimeiEdit()">＋ 場内指名を追加</span></div>
+      <div id="o-shimei-display"></div>
+      <div id="o-shimei-edit-area" style="display:none;margin-top:8px;">
+        <div class="mini-staff" id="o-shimei-edit-list"></div>
+        <button class="sendbtn" onclick="oSaveShimei()" style="margin-top:8px;padding:8px;">保存する</button>
+      </div>
+    </div>
+    <div style="font-size:10px;letter-spacing:1px;color:#555;margin-bottom:6px;">誰のドリンク？</div>
+    <div class="who-sel">
+      <div class="wbtn active" id="o-w-guest" onclick="oSetWho('guest')">お客様</div>
+      <div class="wbtn" id="o-w-self" onclick="oSetWho('self')">自分</div>
+      <div class="wbtn" id="o-w-other" onclick="oSetWho('other')">他スタッフ</div>
+    </div>
+    <div id="o-other-staff-sel" style="display:none;margin-bottom:10px;">
+      <div style="font-size:10px;color:#555;margin-bottom:8px;">スタッフを選択</div>
+      <div class="mini-staff" id="o-other-staff-list"></div>
+    </div>
+    <div class="cat-tabs" id="o-cat-tabs"></div>
+    <div class="mlist" id="o-mlist"></div>
+    <div id="o-custom-input-area" style="display:none;margin-top:8px;">
+      <div style="background:#151515;border:1px solid #2a2a2a;border-radius:10px;padding:10px 12px;">
+        <div style="font-size:10px;color:#555;margin-bottom:8px;letter-spacing:1px;">カスタム追加</div>
+        <div style="display:flex;gap:6px;margin-bottom:6px;">
+          <input type="text" id="o-custom-name" placeholder="品名" style="background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:8px 10px;color:#fff;font-size:13px;flex:1;" />
+          <input type="number" id="o-custom-price" placeholder="金額" style="background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:8px 10px;color:#fff;font-size:13px;width:80px;" />
+          <input type="number" id="o-custom-qty" placeholder="個数" min="1" value="1" style="background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:8px 10px;color:#fff;font-size:13px;width:60px;" />
+        </div>
+        <button onclick="oAddCustomItem()" style="background:#ff6b2b;border:none;border-radius:8px;padding:8px;color:#fff;font-size:13px;font-weight:500;width:100%;cursor:pointer;">追加 +</button>
+      </div>
+    </div>
+    <div class="osummary">
+      <div id="o-orows" style="color:#444;font-size:12px;">まだ注文なし</div>
+      <div class="ototal" id="o-ototaldiv" style="display:none;"><span>小計（税抜）</span><span id="o-ototal">¥0</span></div>
+      <div class="otax" id="o-otaxdiv" style="display:none;"><span>税込合計</span><span id="o-otax">¥0</span></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button class="sendbtn" onclick="oSendOrder()" style="margin-top:0;flex:1;">注文を追加する</button>
+      <button onclick="oSendAndKaikei()" style="background:#222;border:1px solid #333;border-radius:12px;padding:13px 14px;color:#888;font-size:12px;cursor:pointer;white-space:nowrap;flex-shrink:0;">会計へ →</button>
+    </div>
+  </div>
+
+  <!-- 会計 -->
+  <div id="o-kaikei-view" style="display:none;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+      <button class="backbtn" onclick="oBackToGroups()">← 戻る</button>
+      <div class="stitle" style="margin:0;">会計</div>
+    </div>
+    <div class="kaikei-header">
+      <div class="kaikei-gname" id="o-k-gname">—</div>
+      <div class="kaikei-meta" id="o-k-gmeta">—</div>
+    </div>
+    <div class="kaikei-section">
+      <div class="kaikei-section-title">注文一覧</div>
+      <div id="o-k-orders"></div>
+    </div>
+    <div class="kaikei-total-box">
+      <div class="kaikei-row"><span>小計（税抜）</span><span id="o-k-subtotal">¥0</span></div>
+      <div class="kaikei-row tax"><span>消費税 10%</span><span id="o-k-tax">¥0</span></div>
+      <div class="kaikei-row big"><span>税込合計</span><span id="o-k-total">¥0</span></div>
+    </div>
+    <button class="close-btn" id="o-k-close-btn" onclick="oOpenPayModal()">会計を締める ✓</button>
+    <div id="o-k-closed-msg" style="display:none;text-align:center;padding:14px;color:#555;font-size:12px;"></div>
+  </div>
+</div>
+
+<!-- 売上確認タブ -->
+<div class="screen" id="sc-sales-tab">
   <div class="sales-card">
     <div class="sales-date" id="sales-date">—</div>
     <div class="sales-total" id="sales-total">¥0</div>
     <div class="sales-sub">税込売上合計</div>
     <div class="sales-split">
-      <div class="sales-split-item">
-        <div class="sales-split-label">💴 現金</div>
-        <div class="sales-split-val cash" id="sales-cash">¥0</div>
-      </div>
-      <div class="sales-split-item">
-        <div class="sales-split-label">💳 カード</div>
-        <div class="sales-split-val card" id="sales-card">¥0</div>
-      </div>
+      <div class="sales-split-item"><div class="sales-split-label">💴 現金</div><div class="sales-split-val cash" id="sales-cash">¥0</div></div>
+      <div class="sales-split-item"><div class="sales-split-label">💳 カード</div><div class="sales-split-val card" id="sales-card">¥0</div></div>
     </div>
     <div class="sales-groups" id="sales-groups">—</div>
   </div>
-
-  <!-- タブ -->
-  <div class="tabs" id="main-tabs">
-    <div class="tab active" id="tab-today" data-tab="today">本日</div>
-    <div class="tab" id="tab-history" data-tab="history">過去の営業</div>
-    <div class="tab" id="tab-dellog" data-tab="dellog">削除ログ</div>
-    <div class="tab" id="tab-staff" data-tab="staff">スタッフ</div>
+  <div class="sub-tabs" id="sub-tabs">
+    <div class="sub-tab active" data-stab="today">本日</div>
+    <div class="sub-tab" data-stab="history">過去の営業</div>
+    <div class="sub-tab" data-stab="dellog">削除ログ</div>
   </div>
+  <div id="sales-content"></div>
+</div>
 
-  <div id="tab-content"></div>
+<!-- スタッフ管理タブ -->
+<div class="screen" id="sc-staff-tab">
+  <div class="stitle">スタッフ管理</div>
+  <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:14px;margin-bottom:12px;">
+    <div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">スタッフを追加</div>
+    <div style="display:flex;gap:8px;">
+      <input type="text" id="new-staff-name" placeholder="名前" style="background:#111;border:1px solid #333;border-radius:8px;padding:8px 12px;color:#fff;font-size:13px;flex:1;" />
+      <button id="add-staff-btn" style="background:#ff6b2b;border:none;border-radius:8px;padding:8px 14px;color:#fff;font-size:13px;cursor:pointer;">追加</button>
+    </div>
+  </div>
+  <div id="staff-list-content"></div>
+</div>
+
+</div><!-- /app -->
+
+<!-- 支払いモーダル -->
+<div class="pay-modal" id="o-pay-modal">
+  <div class="pay-sheet">
+    <div class="pay-title">お支払い方法</div>
+    <div class="pay-amount" id="o-pay-amount">¥0</div>
+    <div class="pay-btns">
+      <button class="pay-btn cash" id="o-pay-cash">💴 現金</button>
+      <button class="pay-btn card" id="o-pay-card">💳 カード</button>
+    </div>
+    <button class="pay-cancel" id="o-pay-cancel">キャンセル</button>
+  </div>
 </div>
 
 <!-- 注文詳細モーダル -->
 <div class="detail-modal" id="detail-modal">
   <div class="detail-sheet">
     <div class="detail-header">
-      <button class="detail-back" onclick="closeDetail()">← 戻る</button>
-      <div class="detail-title" id="detail-title">—</div>
+      <button class="detail-back" id="detail-back-btn">← 戻る</button>
+      <div style="font-size:14px;font-weight:500;color:#fff;" id="detail-title">—</div>
     </div>
     <div id="detail-content"></div>
   </div>
 </div>
 
-</div>
-
 <script>
 const DAYS=['日','月','火','水','木','金','土'];
+const SUPABASE_URL='https://haqenuqasavvgzyvufuv.supabase.co';
+const SUPABASE_KEY='sb_publishable_SwJYz-lUWQw23jLGdK1GpA_61gn0L1y';
+const OWNER_NAME='りいや';
+
+const MENUS={
+  system:[{n:'チャーム',p:1500},{n:'飲み放題',p:3000},{n:'延長',p:1000},{n:'ダーツ',p:100}],
+  glass:[{n:'割りもの',p:700},{n:'グラス',p:700},{n:'缶',p:1000},{n:'瓶ビール',p:1000},{n:'チャミスル',p:3500}],
+  glass_staff:[{n:'グラス',p:700},{n:'缶',p:1000}],
+  shot:[{n:'テキーラ クエルボ',p:500},{n:'クライナー',p:700},{n:'コカボム',p:1000},{n:'アネホ',p:1000},{n:'観覧車 クエルボ',p:5000},{n:'観覧車 アネホ',p:10000},{n:'シップ クエルボ',p:10000},{n:'シップ アネホ',p:20000}],
+  champagne:[{n:'シャブリ',p:10000},{n:'ヴーヴイエロー',p:20000},{n:'ペリエ白',p:20000},{n:'モエアイス',p:24000},{n:'モエピカ',p:28000},{n:'モエネク',p:28000},{n:'ペリエロゼ',p:35000},{n:'ウルトラ',p:38000},{n:'ソウメイ',p:70000},{n:'ベルエポ',p:70000},{n:'ドンペリ白',p:80000},{n:'ドンペリロゼ',p:120000},{n:'アルマンドゴールド',p:140000},{n:'アルマンドロゼ',p:180000}],
+  bottle:[{n:'鏡月',p:3000},{n:'TAKUMA',p:3000},{n:'プレミアム鏡月',p:4000},{n:'黒桐島',p:4000},{n:'吉四六',p:5500},{n:'ジャックダニエル',p:6000},{n:'シーバスミズナラ',p:9500},{n:'響ブレンダーズ',p:35000},{n:'角',p:45000},{n:'山崎（時価）',p:0},{n:'山崎12年（時価）',p:0}]
+};
+
+let STAFF=[];
+let groups=[],sessions=[],curSessionId=null;
+let curSubTab='today';
+let oCurGroupId=null,oCurOrders=[],oCurWho='guest',oCurOtherStaff='';
+let staffList=[];
+
 function fmtDate(d){return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;}
 function fmtDateJP(d){return`${d.getMonth()+1}月${d.getDate()}日（${DAYS[d.getDay()]}）`;}
 function fmtTime(d){return`${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;}
 function fmtDateTime(iso){const d=new Date(iso);return`${fmtDateJP(d)} ${fmtTime(d)}`;}
 
-let groups=[],sessions=[],curSessionId=null,curTab='today';
-
-const SUPABASE_URL='https://haqenuqasavvgzyvufuv.supabase.co';
-const SUPABASE_KEY='sb_publishable_SwJYz-lUWQw23jLGdK1GpA_61gn0L1y';
-
-async function sbFetch(path, method='GET', body=null){
+/* ---- Supabase ---- */
+async function sbFetch(path,method='GET',body=null){
   const headers={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'};
   if(method==='POST'||method==='PATCH')headers['Prefer']='return=representation';
   const opts={method,headers};
@@ -152,23 +360,48 @@ async function sbFetch(path, method='GET', body=null){
 }
 
 async function loadData(){
-  try{
-    const cs=localStorage.getItem('river_cur_session');
-    if(cs)curSessionId=cs;
-    const sData=await sbFetch('sessions?order=started_at.asc');
-    if(sData)sessions=sData.map(s=>({id:s.id,startedAt:s.started_at,closedAt:s.closed_at,dateLabel:s.date_label}));
-    const gData=await sbFetch('groups?order=id.asc&select=*,orders(*)');
-    if(gData){
-      groups=gData.map(g=>({
-        id:g.id,sessionId:g.session_id,name:g.name,pax:g.pax,
-        shimei:g.shimei||[],closed:g.closed,closedAt:g.closed_at,
-        payMethod:g.pay_method,deleteLogs:g.delete_logs||[],
-        orders:(g.orders||[]).map(o=>({name:o.name,price:o.price,qty:o.qty,who:o.who,staff:o.staff,custom:o.custom,ts:o.ts}))
-      }));
-    }
-  }catch(e){console.error('loadData error:',e);}
+  const cs=localStorage.getItem('river_cur_session');
+  if(cs)curSessionId=cs;
+  const sData=await sbFetch('sessions?order=started_at.asc');
+  if(sData)sessions=sData.map(s=>({id:s.id,startedAt:s.started_at,closedAt:s.closed_at,dateLabel:s.date_label}));
+  const gData=await sbFetch('groups?order=id.asc&select=*,orders(*)');
+  if(gData){
+    groups=gData.map(g=>({
+      id:g.id,sessionId:g.session_id,name:g.name,pax:g.pax,
+      shimei:g.shimei||[],closed:g.closed,closedAt:g.closed_at,
+      payMethod:g.pay_method,deleteLogs:g.delete_logs||[],
+      orders:(g.orders||[]).map(o=>({name:o.name,price:o.price,qty:o.qty,who:o.who,staff:o.staff,custom:o.custom,ts:o.ts}))
+    }));
+  }
+  const staffData=await sbFetch('staff?active=eq.true&order=id.asc');
+  if(staffData)STAFF=staffData.map(s=>s.name);
 }
 
+async function saveGroup(g){
+  const data={session_id:g.sessionId,name:g.name,pax:g.pax,shimei:g.shimei,closed:g.closed,closed_at:g.closedAt||null,pay_method:g.payMethod||null,delete_logs:g.deleteLogs||[]};
+  await sbFetch('groups?id=eq.'+g.id,'PATCH',data);
+}
+async function insertGroup(g){
+  await sbFetch('groups','POST',{id:g.id,session_id:g.sessionId,name:g.name,pax:g.pax,shimei:g.shimei,closed:false,delete_logs:[]});
+}
+async function saveOrders(groupId,orders){
+  await sbFetch('orders?group_id=eq.'+groupId,'DELETE');
+  if(!orders.length)return;
+  const rows=orders.map(o=>({group_id:groupId,name:o.name,price:o.price,qty:o.qty,who:o.who,staff:o.staff||'',custom:o.custom||false,ts:o.ts||new Date().toISOString()}));
+  await sbFetch('orders','POST',rows);
+}
+
+/* ---- メインタブ ---- */
+function switchMainTab(tab){
+  document.querySelectorAll('.main-tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
+  document.getElementById('sc-order-tab').classList.toggle('active',tab==='order');
+  document.getElementById('sc-sales-tab').classList.toggle('active',tab==='sales');
+  document.getElementById('sc-staff-tab').classList.toggle('active',tab==='staff-mgmt');
+  if(tab==='sales')renderSalesTab();
+  if(tab==='staff-mgmt')renderStaffMgmt();
+}
+
+/* ---- 売上タブ ---- */
 function calcSales(groupList){
   const closed=groupList.filter(g=>g.closed);
   const total=closed.reduce((s,g)=>s+g.orders.reduce((a,o)=>a+(o.price*o.qty),0),0);
@@ -177,132 +410,358 @@ function calcSales(groupList){
   return{total:Math.round(total*1.1),cash:Math.round(cash*1.1),card:Math.round(card*1.1),closedCount:closed.length,totalCount:groupList.length};
 }
 
-function renderSummary(sessionGroups,sessionId){
-  const session=sessions.find(s=>s.id===sessionId);
-  const sales=calcSales(sessionGroups);
+function renderSalesTab(){
+  const sg=curSessionId?groups.filter(g=>g.sessionId===curSessionId):[];
+  const session=sessions.find(s=>s.id===curSessionId);
+  const sales=calcSales(sg);
   const d=session?new Date(session.startedAt):new Date();
   document.getElementById('sales-date').textContent=fmtDateJP(d)+(session&&session.closedAt?' （閉店済）':' （営業中）');
   document.getElementById('sales-total').textContent='¥'+sales.total.toLocaleString();
   document.getElementById('sales-cash').textContent='¥'+sales.cash.toLocaleString();
   document.getElementById('sales-card').textContent='¥'+sales.card.toLocaleString();
   document.getElementById('sales-groups').textContent=`${sales.totalCount}グループ　会計済 ${sales.closedCount}組`;
+  renderSubTab(curSubTab);
 }
 
-async function switchTab(tab){
-  curTab=tab;
-  ['today','history','dellog','staff'].forEach(t=>{
-    document.getElementById('tab-'+t).classList.toggle('active',t===tab);
-  });
-  renderTab();
+function switchSubTab(tab){
+  curSubTab=tab;
+  document.querySelectorAll('.sub-tab').forEach(t=>t.classList.toggle('active',t.dataset.stab===tab));
+  renderSubTab(tab);
 }
 
-async function renderTab(){
-  const el=document.getElementById('tab-content');
-  if(curTab==='today'){
+function renderSubTab(tab){
+  const el=document.getElementById('sales-content');
+  if(tab==='today'){
     const sg=curSessionId?groups.filter(g=>g.sessionId===curSessionId):[];
     if(!sg.length){el.innerHTML='<div style="color:#333;font-size:13px;text-align:center;padding:30px;">本日のデータなし</div>';return;}
-    el.innerHTML=sg.map(g=>renderGroupCard(g)).join('');
-  } else if(curTab==='history'){
-    const pastSessions=[...sessions].filter(s=>s.id!==curSessionId).reverse();
-    if(!pastSessions.length){el.innerHTML='<div style="color:#333;font-size:13px;text-align:center;padding:30px;">過去の営業データなし</div>';return;}
-    el.innerHTML=pastSessions.map(s=>{
+    el.innerHTML=sg.map(g=>renderGCard(g)).join('');
+  } else if(tab==='history'){
+    const past=[...sessions].filter(s=>s.id!==curSessionId).reverse();
+    if(!past.length){el.innerHTML='<div style="color:#333;font-size:13px;text-align:center;padding:30px;">過去の営業データなし</div>';return;}
+    el.innerHTML=past.map(s=>{
       const sg=groups.filter(g=>g.sessionId===s.id);
       const sales=calcSales(sg);
       const d=new Date(s.startedAt);
-      return`<div class="session-card" onclick="showSessionDetail('${s.id}')">
-        <div class="session-date">${fmtDateJP(d)}</div>
-        <div class="session-meta">${fmtTime(d)}〜${s.closedAt?fmtTime(new Date(s.closedAt)):'—'}　${sg.length}グループ</div>
-        <div class="session-sales">¥${sales.total.toLocaleString()} <span style="font-size:10px;color:#555;">（現金¥${sales.cash.toLocaleString()} / カード¥${sales.card.toLocaleString()}）</span></div>
-      </div>`;
+      return`<div class="session-card" data-session="${s.id}"><div class="session-date">${fmtDateJP(d)}</div><div class="session-meta">${fmtTime(d)}〜${s.closedAt?fmtTime(new Date(s.closedAt)):'—'}　${sg.length}グループ</div><div class="session-sales">¥${sales.total.toLocaleString()} <span style="font-size:10px;color:#555;">（現金¥${sales.cash.toLocaleString()} / カード¥${sales.card.toLocaleString()}）</span></div></div>`;
     }).join('');
-  } else if(curTab==='staff'){
-    await renderStaffTab();
-    return;
-  } else if(curTab==='dellog'){
+  } else if(tab==='dellog'){
     const logs=[];
-    groups.forEach(g=>{
-      if(g.deleteLogs&&g.deleteLogs.length){
-        g.deleteLogs.forEach(l=>logs.push({...l,groupName:g.name}));
-      }
-    });
+    groups.forEach(g=>{if(g.deleteLogs&&g.deleteLogs.length)g.deleteLogs.forEach(l=>logs.push({...l,groupName:g.name}));});
     logs.sort((a,b)=>new Date(b.ts)-new Date(a.ts));
     if(!logs.length){el.innerHTML='<div style="color:#333;font-size:13px;text-align:center;padding:30px;">削除ログなし</div>';return;}
-    el.innerHTML=logs.map(l=>`
-      <div class="del-log">
-        <div class="del-log-name">🗑 ${l.name} ×${l.qty} <span style="font-size:11px;color:#555;">[${l.label}]</span></div>
-        <div class="del-log-meta">${l.groupName}　削除者：${l.deletedBy}　${fmtDateTime(l.ts)}</div>
-      </div>`).join('');
+    el.innerHTML=logs.map(l=>`<div class="del-log"><div class="del-log-name">🗑 ${l.name} ×${l.qty} <span style="font-size:11px;color:#555;">[${l.label}]</span></div><div class="del-log-meta">${l.groupName}　削除者：${l.deletedBy}　${fmtDateTime(l.ts)}</div></div>`).join('');
   }
 }
 
-function renderGroupCard(g){
+function renderGCard(g){
   const sub=g.orders.reduce((s,o)=>s+(o.price*o.qty),0);
   const total=Math.round(sub*1.1);
   const payLabel=g.closed?(g.payMethod==='cash'?'現金':'カード'):'未会計';
   const payClass=g.closed?(g.payMethod==='cash'?'cash':'card'):'open';
-  const timeStr=g.closed?fmtTime(new Date(g.closedAt)):'';
-  return`<div class="gcard${g.closed?' closed':''}" onclick="showGroupDetail(${g.id})">
-    <div class="gcard-top">
-      <div>
-        <div class="gcard-name">${g.name}<span class="pay-badge ${payClass}">${payLabel}</span></div>
-        <div class="gcard-meta">${g.pax}名　指名：${g.shimei.length?g.shimei.join('・'):'なし'}${timeStr?'　'+timeStr:''}</div>
-      </div>
-      <div class="gcard-price">¥${total.toLocaleString()}</div>
-    </div>
-  </div>`;
+  return`<div class="gcard${g.closed?' closed':''}" data-group="${g.id}"><div class="gcard-top"><div><div class="gcard-name">${g.name}<span class="pay-badge ${payClass}">${payLabel}</span></div><div class="gcard-meta">${g.pax}名　指名：${g.shimei.length?g.shimei.join('・'):'なし'}</div></div><div class="gcard-price">¥${total.toLocaleString()}</div></div></div>`;
 }
 
+/* ---- 詳細モーダル ---- */
 function showGroupDetail(id){
   const g=groups.find(x=>x.id===id);
   if(!g)return;
   document.getElementById('detail-title').textContent=g.name;
-
   const sub=g.orders.reduce((s,o)=>s+(o.price*o.qty),0);
   const tax=Math.round(sub*0.1);
-  const total=sub+tax;
-
-  // 注文を担当別にグループ化
   const byStaff={};
-  g.orders.forEach(o=>{
-    const label=o.who==='guest'?'お客様':o.staff||'—';
-    if(!byStaff[label])byStaff[label]=[];
-    byStaff[label].push(o);
-  });
-
+  g.orders.forEach(o=>{const label=o.who==='guest'?'お客様':o.staff||'—';if(!byStaff[label])byStaff[label]=[];byStaff[label].push(o);});
   let html='';
   Object.entries(byStaff).forEach(([staff,orders])=>{
     html+=`<div class="section-title">${staff}</div>`;
-    // 同じ商品をまとめる
     const merged={};
-    orders.forEach(o=>{
-      if(!merged[o.name])merged[o.name]={name:o.name,price:o.price,qty:0};
-      merged[o.name].qty+=o.qty;
-    });
-    html+=Object.values(merged).map(o=>`
-      <div class="order-item">
-        <div><div class="order-name">${o.name}</div><div class="order-meta">×${o.qty}</div></div>
-        <div class="order-price">${o.price>0?'¥'+(o.price*o.qty).toLocaleString():'時価'}</div>
-      </div>`).join('');
+    orders.forEach(o=>{if(!merged[o.name])merged[o.name]={name:o.name,price:o.price,qty:0};merged[o.name].qty+=o.qty;});
+    html+=Object.values(merged).map(o=>`<div class="order-item"><div><div class="order-name">${o.name}</div><div class="order-meta">×${o.qty}</div></div><div class="order-price">${o.price>0?'¥'+(o.price*o.qty).toLocaleString():'時価'}</div></div>`).join('');
   });
-
-  html+=`<div class="total-box">
-    <div class="total-row"><span>小計（税抜）</span><span>¥${sub.toLocaleString()}</span></div>
-    <div class="total-row tax"><span>消費税 10%</span><span>¥${tax.toLocaleString()}</span></div>
-    <div class="total-row big"><span>税込合計</span><span>¥${total.toLocaleString()}</span></div>
-  </div>`;
-
-  if(g.deleteLogs&&g.deleteLogs.length){
-    html+=`<div class="section-title" style="color:#e53935;">削除ログ</div>`;
-    html+=g.deleteLogs.map(l=>`
-      <div class="del-log">
-        <div class="del-log-name">🗑 ${l.name} ×${l.qty}</div>
-        <div class="del-log-meta">削除者：${l.deletedBy}　${fmtDateTime(l.ts)}</div>
-      </div>`).join('');
-  }
-
+  html+=`<div class="total-box"><div class="total-row"><span>小計（税抜）</span><span>¥${sub.toLocaleString()}</span></div><div class="total-row tax"><span>消費税 10%</span><span>¥${tax.toLocaleString()}</span></div><div class="total-row big"><span>税込合計</span><span>¥${(sub+tax).toLocaleString()}</span></div></div>`;
+  if(g.deleteLogs&&g.deleteLogs.length){html+=`<div class="section-title" style="color:#e53935;">削除ログ</div>`;html+=g.deleteLogs.map(l=>`<div class="del-log"><div class="del-log-name">🗑 ${l.name} ×${l.qty}</div><div class="del-log-meta">削除者：${l.deletedBy}　${fmtDateTime(l.ts)}</div></div>`).join('');}
   document.getElementById('detail-content').innerHTML=html;
   document.getElementById('detail-modal').classList.add('show');
 }
+
+/* ---- 注文タブ：グループ一覧 ---- */
+function renderOGroups(){
+  const el=document.getElementById('o-glist');
+  const sg=curSessionId?groups.filter(g=>g.sessionId===curSessionId&&!g.closed):[];
+  if(!sg.length){el.innerHTML='<div style="color:#333;font-size:13px;text-align:center;padding:20px;">営業中のグループなし</div>';return;}
+  el.innerHTML=sg.map(g=>{
+    const sub=g.orders.reduce((s,o)=>s+(o.price*o.qty),0);
+    return`<div class="gcard" data-group="${g.id}"><div class="gcard-top" style="flex:1;"><div><div class="gcard-name">${g.name}</div><div class="gcard-meta">${g.pax}名　指名：${g.shimei.length?g.shimei.join('・'):'なし'}</div><div class="gcard-actions"><span class="gcard-kaikei-btn" data-kaikei="${g.id}">会計 →</span></div></div><div class="gcard-price">¥${Math.round(sub*1.1).toLocaleString()}</div></div></div>`;
+  }).join('');
+}
+
+async function oCreateGroup(){
+  const name=document.getElementById('o-gname-in').value.trim()||'新規';
+  const pax=parseInt(document.getElementById('o-gpax-in').value)||1;
+  const shimei=[...document.querySelectorAll('#o-shimei-sel .msbtn.sel')].map(el=>el.textContent);
+  const g={id:Date.now(),name,pax,shimei,orders:[],closed:false,sessionId:curSessionId,deleteLogs:[]};
+  groups.push(g);
+  document.getElementById('o-gname-in').value='';
+  document.getElementById('o-gpax-in').value='';
+  document.querySelectorAll('#o-shimei-sel .msbtn').forEach(el=>el.classList.remove('sel'));
+  document.getElementById('o-addgroup-form').style.display='none';
+  renderOGroups();
+  await insertGroup(g);
+}
+
+function oOpenGroup(id){
+  oCurGroupId=id;oCurOrders=[];
+  const g=groups.find(x=>x.id===id);
+  document.getElementById('o-cur-group').textContent=g.name;
+  oUpdateTotal();
+  oRenderShimeiDisplay(g);
+  document.getElementById('o-shimei-edit-list').innerHTML=STAFF.map(s=>`<div class="msbtn${g.shimei.includes(s)?' sel':''}" onclick="this.classList.toggle('sel')">${s}</div>`).join('');
+  document.getElementById('o-other-staff-list').innerHTML=STAFF.map(s=>`<div class="msbtn" onclick="oSelOther(this,'${s}')">${s}</div>`).join('');
+  document.getElementById('o-orows').innerHTML='<span style="color:#444;font-size:12px;">まだ注文なし</span>';
+  document.getElementById('o-ototaldiv').style.display='none';
+  document.getElementById('o-otaxdiv').style.display='none';
+  document.getElementById('o-shimei-edit-area').style.display='none';
+  document.getElementById('o-custom-input-area').style.display='none';
+  oSetWho('guest');
+  document.getElementById('o-groups-view').style.display='none';
+  document.getElementById('o-order-view').style.display='block';
+  document.getElementById('o-kaikei-view').style.display='none';
+}
+
+function oBackToGroups(){
+  oCurOrders=[];
+  document.getElementById('o-groups-view').style.display='block';
+  document.getElementById('o-order-view').style.display='none';
+  document.getElementById('o-kaikei-view').style.display='none';
+  renderOGroups();
+}
+
+function oRenderShimeiDisplay(g){
+  document.getElementById('o-shimei-display').innerHTML=g.shimei.length?g.shimei.map(s=>`<span class="tag">${s}</span>`).join(''):'<span style="color:#444;font-size:12px;">指名なし</span>';
+}
+function oToggleShimeiEdit(){const a=document.getElementById('o-shimei-edit-area');a.style.display=a.style.display==='none'?'block':'none';}
+async function oSaveShimei(){
+  const g=groups.find(x=>x.id===oCurGroupId);
+  g.shimei=[...document.querySelectorAll('#o-shimei-edit-list .msbtn.sel')].map(el=>el.textContent);
+  oRenderShimeiDisplay(g);
+  document.getElementById('o-shimei-edit-area').style.display='none';
+  await saveGroup(g);
+}
+
+function oUpdateTotal(){
+  const g=groups.find(x=>x.id===oCurGroupId);
+  if(!g)return;
+  const sub=g.orders.reduce((s,o)=>s+(o.price*o.qty),0);
+  document.getElementById('o-cur-total').textContent='¥'+Math.round(sub*1.1).toLocaleString();
+}
+
+function oSetWho(w){
+  oCurWho=w;
+  ['guest','self','other'].forEach(k=>document.getElementById('o-w-'+k).classList.remove('active'));
+  document.getElementById('o-w-'+w).classList.add('active');
+  document.getElementById('o-other-staff-sel').style.display=w==='other'?'block':'none';
+  if(w!=='other')oCurOtherStaff='';
+  const tabs=document.getElementById('o-cat-tabs');
+  if(w==='guest'){
+    tabs.innerHTML=`<div class="ctab active" onclick="oShowCat(this,'system')">システム</div><div class="ctab" onclick="oShowCat(this,'glass')">グラス</div><div class="ctab" onclick="oShowCat(this,'shot')">ショット</div><div class="ctab" onclick="oShowCat(this,'champagne')">シャンパン</div><div class="ctab" onclick="oShowCat(this,'bottle')">ボトル</div>`;
+    oShowCat(tabs.querySelector('.ctab'),'system');
+  } else {
+    tabs.innerHTML=`<div class="ctab active" onclick="oShowCat(this,'shot')">ショット</div><div class="ctab" onclick="oShowCat(this,'champagne')">シャンパン</div><div class="ctab" onclick="oShowCat(this,'glass')">グラス</div><div class="ctab" onclick="oShowCat(this,'system')">その他</div>`;
+    oShowCat(tabs.querySelector('.ctab'),'shot');
+  }
+}
+
+function oSelOther(el,name){document.querySelectorAll('#o-other-staff-list .msbtn').forEach(e=>e.classList.remove('sel'));el.classList.add('sel');oCurOtherStaff=name;}
+
+function oShowCat(el,cat){
+  document.querySelectorAll('#o-cat-tabs .ctab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('o-custom-input-area').style.display=cat==='system'?'block':'none';
+  if(cat==='system'&&oCurWho!=='guest'){document.getElementById('o-mlist').innerHTML='';return;}
+  const menuKey=(cat==='glass'&&oCurWho!=='guest')?'glass_staff':cat;
+  document.getElementById('o-mlist').innerHTML=(MENUS[menuKey]||[]).map(item=>{
+    const ex=oCurOrders.find(o=>o.name===item.n&&o.who===oCurWho);
+    const q=ex?ex.qty:0;
+    const key=item.n.replace(/[\s（）、。]/g,'_');
+    return`<div class="mitem"><div class="iname">${item.n}</div><div style="display:flex;align-items:center;gap:8px;"><span class="iprice">${item.p>0?'¥'+item.p.toLocaleString():'時価'}</span><div class="qctrl"><button class="qbtn" onclick="oChQty('${item.n}',${item.p},-1)">−</button><span class="qnum" id="oq-${key}">${q||''}</span><button class="qbtn plus" onclick="oChQty('${item.n}',${item.p},1)">+</button></div></div></div>`;
+  }).join('');
+}
+
+function oChQty(name,price,delta){
+  const who=oCurWho;
+  const staff=who==='self'?OWNER_NAME:who==='other'?oCurOtherStaff:'';
+  const ex=oCurOrders.find(o=>o.name===name&&o.who===who);
+  if(ex){ex.qty+=delta;if(ex.qty<=0)oCurOrders=oCurOrders.filter(o=>!(o.name===name&&o.who===who));}
+  else if(delta>0){oCurOrders.push({name,price,qty:1,who,staff});}
+  const el=document.getElementById('oq-'+name.replace(/[\s（）、。]/g,'_'));
+  if(el){const o=oCurOrders.find(o=>o.name===name&&o.who===who);el.textContent=o?o.qty:'';}
+  oRenderSummary();
+}
+
+function oAddCustomItem(){
+  const name=document.getElementById('o-custom-name').value.trim();
+  const price=parseInt(document.getElementById('o-custom-price').value)||0;
+  const qty=parseInt(document.getElementById('o-custom-qty').value)||1;
+  if(!name)return;
+  const ex=oCurOrders.find(o=>o.name===name&&o.who===oCurWho&&o.price===price&&o.custom);
+  if(ex){ex.qty+=qty;}else{oCurOrders.push({name,price,qty,who:oCurWho,staff:oCurWho==='self'?OWNER_NAME:oCurWho==='other'?oCurOtherStaff:'',custom:true});}
+  document.getElementById('o-custom-name').value='';
+  document.getElementById('o-custom-price').value='';
+  document.getElementById('o-custom-qty').value='1';
+  oRenderSummary();
+}
+
+function oRenderSummary(){
+  const el=document.getElementById('o-orows');
+  const td=document.getElementById('o-ototaldiv');
+  const txd=document.getElementById('o-otaxdiv');
+  if(!oCurOrders.length){el.innerHTML='<span style="color:#444;font-size:12px;">まだ注文なし</span>';td.style.display='none';txd.style.display='none';return;}
+  let sub=0;
+  el.innerHTML=oCurOrders.map(o=>{
+    const label=o.who==='guest'?'お客様':o.staff||OWNER_NAME;
+    sub+=o.price*o.qty;
+    const whoColor=o.who==='guest'?'#555':'#ff6b2b44';
+    const nameColor=o.who==='guest'?'#ccc':'#ff6b2b';
+    return`<div class="orow" style="border-left:2px solid ${whoColor};padding-left:6px;margin-bottom:2px;"><span style="color:${nameColor}">${o.name} ×${o.qty} <span style="color:#555;font-size:10px;">[${label}]</span></span><span>${o.price>0?'¥'+(o.price*o.qty).toLocaleString():'時価'}</span></div>`;
+  }).join('');
+  td.style.display='flex';txd.style.display='flex';
+  document.getElementById('o-ototal').textContent='¥'+sub.toLocaleString();
+  document.getElementById('o-otax').textContent='¥'+Math.round(sub*1.1).toLocaleString();
+}
+
+async function oSendOrder(){
+  if(!oCurOrders.length)return;
+  const g=groups.find(x=>x.id===oCurGroupId);
+  oCurOrders.forEach(o=>g.orders.push({...o,ts:new Date().toISOString()}));
+  oCurOrders=[];
+  oUpdateTotal();
+  oRenderSummary();
+  renderOGroups();
+  await saveOrders(g.id,g.orders);
+  oBackToGroups();
+}
+
+async function oSendAndKaikei(){
+  if(oCurOrders.length>0){
+    const g=groups.find(x=>x.id===oCurGroupId);
+    oCurOrders.forEach(o=>g.orders.push({...o,ts:new Date().toISOString()}));
+    oCurOrders=[];
+    await saveOrders(g.id,g.orders);
+  }
+  oOpenKaikei(oCurGroupId);
+}
+
+/* ---- 会計 ---- */
+function oOpenKaikei(id){
+  oCurGroupId=id;
+  const g=groups.find(x=>x.id===id);
+  document.getElementById('o-k-gname').textContent=g.name;
+  document.getElementById('o-k-gmeta').textContent=g.pax+'名　指名：'+(g.shimei.length?g.shimei.join('・'):'なし');
+  const gEl=document.getElementById('o-k-orders');
+  if(!g.orders.length){gEl.innerHTML='<div style="color:#444;font-size:12px;padding:6px 0;">注文なし</div>';}
+  else{
+    const merged={};
+    g.orders.forEach(o=>{const label=o.who==='guest'?'お客様':o.staff||OWNER_NAME;const key=o.name+'__'+label;if(!merged[key])merged[key]={name:o.name,price:o.price,qty:0,label};merged[key].qty+=o.qty;});
+    gEl.innerHTML=Object.values(merged).map(o=>`<div class="kaikei-item"><div><div class="kaikei-item-name">${o.name}</div><div class="kaikei-item-detail">${o.label}　×${o.qty}</div></div><div class="kaikei-item-price">${o.price>0?'¥'+(o.price*o.qty).toLocaleString():'時価'}</div></div>`).join('');
+  }
+  const sub=g.orders.reduce((s,o)=>s+(o.price*o.qty),0);
+  const tax=Math.round(sub*0.1);
+  document.getElementById('o-k-subtotal').textContent='¥'+sub.toLocaleString();
+  document.getElementById('o-k-tax').textContent='¥'+tax.toLocaleString();
+  document.getElementById('o-k-total').textContent='¥'+(sub+tax).toLocaleString();
+  const btn=document.getElementById('o-k-close-btn');
+  const msg=document.getElementById('o-k-closed-msg');
+  if(g.closed){btn.style.display='none';msg.style.display='block';const payLabel=g.payMethod==='cash'?'💴 現金':'💳 カード';msg.textContent='会計済　'+payLabel+'　'+fmtTime(new Date(g.closedAt));}
+  else{btn.style.display='block';msg.style.display='none';document.getElementById('o-pay-amount').textContent='¥'+(sub+tax).toLocaleString();}
+  document.getElementById('o-groups-view').style.display='none';
+  document.getElementById('o-order-view').style.display='none';
+  document.getElementById('o-kaikei-view').style.display='block';
+}
+
+function oOpenPayModal(){document.getElementById('o-pay-modal').classList.add('show');}
+function oClosePayModal(){document.getElementById('o-pay-modal').classList.remove('show');}
+
+async function oCloseGroup(method){
+  oClosePayModal();
+  const g=groups.find(x=>x.id===oCurGroupId);
+  g.closed=true;g.closedAt=new Date().toISOString();g.payMethod=method;
+  await saveGroup(g);
+  renderOGroups();
+  document.getElementById('o-k-close-btn').style.display='none';
+  const msg=document.getElementById('o-k-closed-msg');
+  msg.style.display='block';
+  msg.textContent='会計済　'+(method==='cash'?'💴 現金':'💳 カード');
+  setTimeout(()=>oBackToGroups(),600);
+}
+
+/* ---- スタッフ管理 ---- */
+async function renderStaffMgmt(){
+  const data=await sbFetch('staff?order=id.asc');
+  if(data)staffList=data;
+  const el=document.getElementById('staff-list-content');
+  el.innerHTML=staffList.map(s=>`<div class="staff-item" style="opacity:${s.active?1:0.5};"><div><div style="font-size:14px;color:${s.active?'#fff':'#555'};">${s.name}</div><div style="font-size:10px;color:#555;margin-top:2px;">${s.can_kaikei?'会計締め ':''}${s.can_close?'閉店 ':''}${s.role==='temp'?'臨時 ':''}</div></div><button data-toggle="${s.id}" data-active="${s.active}" style="background:transparent;border:1px solid #333;border-radius:6px;padding:4px 10px;color:#555;font-size:11px;cursor:pointer;">${s.active?'無効化':'有効化'}</button></div>`).join('');
+}
+
+/* ---- イベントリスナー ---- */
+document.addEventListener('click', async function(e){
+  // メインタブ
+  const mainTab=e.target.closest('[data-tab]');
+  if(mainTab&&mainTab.closest('#main-tabs'))switchMainTab(mainTab.dataset.tab);
+
+  // サブタブ
+  const subTab=e.target.closest('[data-stab]');
+  if(subTab)switchSubTab(subTab.dataset.stab);
+
+  // グループカードタップ（注文タブ）
+  const gcard=e.target.closest('[data-group]');
+  if(gcard&&!e.target.closest('[data-kaikei]')&&gcard.closest('#o-glist'))oOpenGroup(parseInt(gcard.dataset.group));
+
+  // 会計ボタン
+  const kaikeiBtn=e.target.closest('[data-kaikei]');
+  if(kaikeiBtn)oOpenKaikei(parseInt(kaikeiBtn.dataset.kaikei));
+
+  // 売上タブのグループカード
+  const salesGcard=e.target.closest('[data-group]');
+  if(salesGcard&&salesGcard.closest('#sales-content'))showGroupDetail(parseInt(salesGcard.dataset.group));
+
+  // 売上タブのセッションカード
+  const sessionCard=e.target.closest('[data-session]');
+  if(sessionCard)showSessionDetail(sessionCard.dataset.session);
+
+  // スタッフ有効化/無効化
+  const toggleBtn=e.target.closest('[data-toggle]');
+  if(toggleBtn){
+    const id=toggleBtn.dataset.toggle;
+    const current=toggleBtn.dataset.active==='true';
+    await sbFetch('staff?id=eq.'+id,'PATCH',{active:!current});
+    renderStaffMgmt();
+  }
+
+  // 詳細モーダルを閉じる
+  if(e.target.id==='detail-back-btn')document.getElementById('detail-modal').classList.remove('show');
+});
+
+// グループ追加ボタン
+document.getElementById('o-addgroup-btn').addEventListener('click',()=>{
+  const f=document.getElementById('o-addgroup-form');
+  f.style.display=f.style.display==='none'?'block':'none';
+  if(f.style.display==='block'){
+    document.getElementById('o-shimei-sel').innerHTML=STAFF.map(s=>`<div class="msbtn" onclick="this.classList.toggle('sel')">${s}</div>`).join('');
+  }
+});
+
+// スタッフ追加
+document.getElementById('add-staff-btn').addEventListener('click',async()=>{
+  const name=document.getElementById('new-staff-name').value.trim();
+  if(!name)return;
+  await sbFetch('staff','POST',{name,role:'temp',active:true});
+  document.getElementById('new-staff-name').value='';
+  renderStaffMgmt();
+});
+
+// 支払いモーダル
+document.getElementById('o-pay-cash').addEventListener('click',()=>oCloseGroup('cash'));
+document.getElementById('o-pay-card').addEventListener('click',()=>oCloseGroup('card'));
+document.getElementById('o-pay-cancel').addEventListener('click',oClosePayModal);
 
 function showSessionDetail(sessionId){
   const sg=groups.filter(g=>g.sessionId===sessionId);
@@ -310,92 +769,26 @@ function showSessionDetail(sessionId){
   const d=new Date(session.startedAt);
   document.getElementById('detail-title').textContent=fmtDateJP(d);
   const sales=calcSales(sg);
-  let html=`<div class="total-box" style="margin-bottom:14px;">
-    <div class="total-row"><span>💴 現金</span><span>¥${sales.cash.toLocaleString()}</span></div>
-    <div class="total-row"><span>💳 カード</span><span>¥${sales.card.toLocaleString()}</span></div>
-    <div class="total-row big"><span>売上合計（税込）</span><span>¥${sales.total.toLocaleString()}</span></div>
-  </div>`;
-  html+=sg.map(g=>renderGroupCard(g)).join('');
+  let html=`<div class="total-box" style="margin-bottom:14px;"><div class="total-row"><span>💴 現金</span><span>¥${sales.cash.toLocaleString()}</span></div><div class="total-row"><span>💳 カード</span><span>¥${sales.card.toLocaleString()}</span></div><div class="total-row big"><span>売上合計（税込）</span><span>¥${sales.total.toLocaleString()}</span></div></div>`;
+  html+=sg.map(g=>renderGCard(g)).join('');
   document.getElementById('detail-content').innerHTML=html;
   document.getElementById('detail-modal').classList.add('show');
 }
 
-/* ---- Staff Management ---- */
-let staffList=[];
-
-async function loadStaffList(){
-  const data=await sbFetch('staff?order=id.asc');
-  if(data)staffList=data;
-}
-
-async function renderStaffTab(){
-  await loadStaffList();
-  const el=document.getElementById('tab-content');
-  el.innerHTML=`
-    <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:14px;margin-bottom:12px;">
-      <div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;">スタッフを追加</div>
-      <div style="display:flex;gap:8px;">
-        <input type="text" id="new-staff-name" placeholder="名前" style="background:#111;border:1px solid #333;border-radius:8px;padding:8px 12px;color:#fff;font-size:13px;flex:1;" />
-        <button onclick="addStaff()" style="background:#ff6b2b;border:none;border-radius:8px;padding:8px 14px;color:#fff;font-size:13px;cursor:pointer;">追加</button>
-      </div>
-    </div>
-    <div id="staff-list-content"></div>
-  `;
-  renderStaffList();
-}
-
-function renderStaffList(){
-  const el=document.getElementById('staff-list-content');
-  if(!el)return;
-  el.innerHTML=staffList.map(s=>`
-    <div style="background:#1a1a1a;border:1px solid ${s.active?'#2a2a2a':'#111'};border-radius:10px;padding:12px 14px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;opacity:${s.active?1:0.5};">
-      <div>
-        <div style="font-size:14px;color:${s.active?'#fff':'#555'};">${s.name}</div>
-        <div style="font-size:10px;color:#555;margin-top:2px;">${s.can_kaikei?'会計締め ':''}${s.can_close?'閉店 ':''}${s.can_edit?'削除 ':''}</div>
-      </div>
-      <button onclick="toggleStaffActive(${s.id},${s.active})" style="background:transparent;border:1px solid #333;border-radius:6px;padding:4px 10px;color:#555;font-size:11px;cursor:pointer;">${s.active?'無効化':'有効化'}</button>
-    </div>`).join('');
-}
-
-async function addStaff(){
-  const name=document.getElementById('new-staff-name').value.trim();
-  if(!name)return;
-  await sbFetch('staff','POST',{name,role:'temp',active:true});
-  document.getElementById('new-staff-name').value='';
-  await renderStaffTab();
-}
-
-async function toggleStaffActive(id,current){
-  await sbFetch('staff?id=eq.'+id,'PATCH',{active:!current});
-  await renderStaffTab();
-}
-
-function closeDetail(){
-  document.getElementById('detail-modal').classList.remove('show');
-}
-
-// 初期化
+/* ---- Init ---- */
 async function init(){
-  document.getElementById('tab-content').innerHTML='<div style="color:#555;font-size:13px;text-align:center;padding:30px;">読み込み中...</div>';
-  // タブのクリックイベントをDOMContentLoaded後に設定
-  document.getElementById('main-tabs').addEventListener('click',function(e){
-    const tab=e.target.getAttribute('data-tab');
-    if(tab)switchTab(tab);
-  });
+  document.getElementById('o-glist').innerHTML='<div style="color:#555;font-size:13px;text-align:center;padding:20px;">読み込み中...</div>';
   await loadData();
-  const todayGroups=curSessionId?groups.filter(g=>g.sessionId===curSessionId):[];
-  renderSummary(todayGroups,curSessionId);
-  renderTab();
+  // セッションバッジ
+  if(curSessionId){
+    const session=sessions.find(s=>s.id===curSessionId);
+    if(session){const d=new Date(session.startedAt);document.getElementById('o-session-badge').textContent=fmtDateJP(d);}
+  }
+  renderOGroups();
+  // 30秒ごとに自動更新
+  setInterval(async()=>{await loadData();renderOGroups();},30000);
 }
 init();
-
-// 30秒ごとに自動更新
-setInterval(async()=>{
-  await loadData();
-  const sg=curSessionId?groups.filter(g=>g.sessionId===curSessionId):[];
-  renderSummary(sg,curSessionId);
-  renderTab();
-},30000);
 </script>
 </body>
 </html>
