@@ -906,13 +906,12 @@ function openKaikei(id){
       if(!merged[key])merged[key]={name:o.name,price:o.price,qty:0,label};
       merged[key].qty+=o.qty;
     });
-    const canEdit=CAN_EDIT.includes(curStaff);
     gEl.innerHTML=Object.values(merged).map((o,idx)=>`
       <div class="kaikei-item">
         <div style="flex:1;"><div class="kaikei-item-name">${o.name}</div><div class="kaikei-item-detail">${o.label}　×${o.qty}</div></div>
         <div style="display:flex;align-items:center;gap:8px;">
           <div class="kaikei-item-price">${o.price>0?'¥'+(o.price*o.qty).toLocaleString():'時価'}</div>
-          ${canEdit&&!g.closed?`<button onclick="deleteOrderItem(${g.id},'${o.name}','${o.label}')" style="background:transparent;border:1px solid #333;border-radius:6px;padding:3px 8px;color:#555;font-size:11px;cursor:pointer;">削除</button>`:''}
+          ${!g.closed?`<button onclick="deleteOrderItem(${g.id},'${o.name}','${o.label}')" style="background:transparent;border:1px solid #333;border-radius:6px;padding:3px 8px;color:#555;font-size:11px;cursor:pointer;">削除</button>`:''}
         </div>
       </div>`).join('');
   }
