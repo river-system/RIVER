@@ -276,6 +276,7 @@ body{background:#050505;min-height:100vh;display:flex;justify-content:center;pad
   </div>
   <div class="sub-tabs" id="sub-tabs">
     <div class="sub-tab active" data-stab="today">本日</div>
+    <div class="sub-tab" data-stab="back">バック</div>
     <div class="sub-tab" data-stab="history">過去の営業</div>
     <div class="sub-tab" data-stab="dellog">削除ログ</div>
   </div>
@@ -345,6 +346,56 @@ const MENUS={
   champagne:[{n:'シャブリ',p:10000},{n:'ヴーヴイエロー',p:20000},{n:'ペリエ白',p:20000},{n:'モエアイス',p:24000},{n:'モエピカ',p:28000},{n:'モエネク',p:28000},{n:'ペリエロゼ',p:35000},{n:'ウルトラ',p:38000},{n:'ソウメイ',p:70000},{n:'ベルエポ',p:70000},{n:'ドンペリ白',p:80000},{n:'ドンペリロゼ',p:120000},{n:'アルマンドゴールド',p:140000},{n:'アルマンドロゼ',p:180000}],
   bottle:[{n:'鏡月',p:3000},{n:'TAKUMA',p:3000},{n:'プレミアム鏡月',p:4000},{n:'黒桐島',p:4000},{n:'吉四六',p:5500},{n:'ジャックダニエル',p:6000},{n:'シーバスミズナラ',p:9500},{n:'響ブレンダーズ',p:35000},{n:'角',p:45000},{n:'山崎（時価）',p:0},{n:'山崎12年（時価）',p:0}]
 };
+
+// バック対象定義
+const DRINK_BACK_ITEMS=['テキーラ クエルボ','クライナー','コカボム','アネホ','グラス','缶']; // 杯数×100円
+const PCT_BACK_ITEMS=['シャブリ','ヴーヴイエロー','ペリエ白','モエアイス','モエピカ','モエネク','ペリエロゼ','ウルトラ','ソウメイ','ベルエポ','ドンペリ白','ドンペリロゼ','アルマンドゴールド','アルマンドロゼ','観覧車 クエルボ','観覧車 アネホ','シップ クエルボ','シップ アネホ']; // 金額×10%
+const CHAMPAGNE_NAMES=['シャブリ','ヴーヴイエロー','ペリエ白','モエアイス','モエピカ','モエネク','ペリエロゼ','ウルトラ','ソウメイ','ベルエポ','ドンペリ白','ドンペリロゼ','アルマンドゴールド','アルマンドロゼ']; // 指名バック計算から除外
+
+function calcBackForSession(sessionGroups){
+  const staffBack={}; // スタッフ別バック合計
+
+  sessionGroups.forEach(g=>{
+    if(!g.closed)return; // 会計済みのみ
+
+    // ① ドリンクバック・シャンパンバック（who=self or other）
+    g.orders.forEach(o=>{
+      if(o.who!=='self'&&o.who!=='other')return;
+      const staffName=o.staff||'';
+      if(!staffName)return;
+      if(!staffBack[staffName])staffBack[staffName]={drink:0,pct:0,shimei:0,total:0};
+
+      if(DRINK_BACK_ITEMS.includes(o.name)){
+        staffBack[staffName].drink+=o.qty*100;
+      } else if(PCT_BACK_ITEMS.includes(o.name)){
+        staffBack[staffName].pct+=Math.round(o.price*o.qty*0.1);
+      }
+    });
+
+    // ③ 指名バック（税込合計を税抜に変換 → シャンパン金額を引いた×10%÷指名人数）
+    if(g.shimei&&g.shimei.length>0){
+      // お客様注文の税込合計を税抜に変換
+      const totalInc=g.orders.filter(o=>o.who==='guest').reduce((s,o)=>s+(o.price*o.qty),0);
+      const totalExTax=Math.round(totalInc/1.1);
+      // シャンパンは税抜金額そのまま（メニュー価格が税抜）
+      const champTotal=g.orders.filter(o=>o.who==='guest'&&CHAMPAGNE_NAMES.includes(o.name)).reduce((s,o)=>s+(o.price*o.qty),0);
+      const shimeiBase=totalExTax-champTotal;
+      const shimeiBackTotal=Math.round(shimeiBase*0.1);
+      const perStaff=Math.round(shimeiBackTotal/g.shimei.length);
+      g.shimei.forEach(s=>{
+        if(!staffBack[s])staffBack[s]={drink:0,pct:0,shimei:0,total:0};
+        staffBack[s].shimei+=perStaff;
+      });
+    }
+  });
+
+  // 合計計算
+  Object.keys(staffBack).forEach(s=>{
+    staffBack[s].total=staffBack[s].drink+staffBack[s].pct+staffBack[s].shimei;
+  });
+
+  return staffBack;
+}
 
 let STAFF=[];
 let groups=[],sessions=[],curSessionId=null;
@@ -447,6 +498,32 @@ function renderSubTab(tab){
     const sg=curSessionId?groups.filter(g=>g.sessionId===curSessionId):[];
     if(!sg.length){el.innerHTML='<div style="color:#333;font-size:13px;text-align:center;padding:30px;">本日のデータなし</div>';return;}
     el.innerHTML=sg.map(g=>renderGCard(g)).join('');
+  } else if(tab==='back'){
+    const sg=curSessionId?groups.filter(g=>g.sessionId===curSessionId):[];
+    const backData=calcBackForSession(sg);
+    const entries=Object.entries(backData).sort((a,b)=>b[1].total-a[1].total);
+    if(!entries.length){el.innerHTML='<div style="color:#333;font-size:13px;text-align:center;padding:30px;">バックデータなし（会計済みグループが必要です）</div>';return;}
+    el.innerHTML=entries.map(([name,b])=>`
+      <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:14px;margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div style="font-size:15px;font-weight:500;color:#fff;">${name}</div>
+          <div style="font-size:17px;font-weight:700;color:#ff6b2b;">¥${b.total.toLocaleString()}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
+          <div style="background:#111;border-radius:8px;padding:8px;text-align:center;">
+            <div style="font-size:9px;color:#555;margin-bottom:3px;">ドリンク</div>
+            <div style="font-size:13px;color:#ccc;">¥${b.drink.toLocaleString()}</div>
+          </div>
+          <div style="background:#111;border-radius:8px;padding:8px;text-align:center;">
+            <div style="font-size:9px;color:#555;margin-bottom:3px;">シャンパン</div>
+            <div style="font-size:13px;color:#ccc;">¥${b.pct.toLocaleString()}</div>
+          </div>
+          <div style="background:#111;border-radius:8px;padding:8px;text-align:center;">
+            <div style="font-size:9px;color:#555;margin-bottom:3px;">指名</div>
+            <div style="font-size:13px;color:#ccc;">¥${b.shimei.toLocaleString()}</div>
+          </div>
+        </div>
+      </div>`).join('');
   } else if(tab==='history'){
     const past=[...sessions].filter(s=>s.id!==curSessionId).reverse();
     if(!past.length){el.innerHTML='<div style="color:#333;font-size:13px;text-align:center;padding:30px;">過去の営業データなし</div>';return;}
