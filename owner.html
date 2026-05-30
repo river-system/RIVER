@@ -372,10 +372,9 @@ function calcBackForSession(sessionGroups){
       }
     });
 
-    // 指名バック → 指名あり卓のみ（全注文合計から計算）
+    // 指名バック → 指名あり卓のみ（全注文合計・メニュー価格は税抜）
     if(isShimeiTable){
-      const totalInc=g.orders.reduce((s,o)=>s+(o.price*o.qty),0);
-      const totalExTax=Math.round(totalInc/1.1);
+      const totalExTax=g.orders.reduce((s,o)=>s+(o.price*o.qty),0);
       const champTotal=g.orders.filter(o=>CHAMPAGNE_NAMES.includes(o.name)).reduce((s,o)=>s+(o.price*o.qty),0);
       const shimeiBase=totalExTax-champTotal;
       const shimeiBackTotal=Math.round(shimeiBase*0.1);
