@@ -359,26 +359,24 @@ function calcBackForSession(sessionGroups){
     if(!g.closed)return; // 会計済みのみ
     const isShimeiTable=g.shimei&&g.shimei.length>0;
 
-    // ドリンクバック・シャンパンバック → 指名なし卓のみ
-    if(!isShimeiTable){
-      g.orders.forEach(o=>{
-        if(o.who!=='self'&&o.who!=='other')return;
-        const staffName=o.staff||'';
-        if(!staffName)return;
-        if(!staffBack[staffName])staffBack[staffName]={drink:0,pct:0,shimei:0,total:0};
-        if(DRINK_BACK_ITEMS.includes(o.name)){
-          staffBack[staffName].drink+=o.qty*100;
-        } else if(PCT_BACK_ITEMS.includes(o.name)){
-          staffBack[staffName].pct+=Math.round(o.price*o.qty*0.1);
-        }
-      });
-    }
+    // ドリンクバック → 指名なし卓のみ、シャンパンバック → 全卓
+    g.orders.forEach(o=>{
+      if(o.who!=='self'&&o.who!=='other')return;
+      const staffName=o.staff||'';
+      if(!staffName)return;
+      if(!staffBack[staffName])staffBack[staffName]={drink:0,pct:0,shimei:0,total:0};
+      if(DRINK_BACK_ITEMS.includes(o.name)&&!isShimeiTable){
+        staffBack[staffName].drink+=o.qty*100; // ドリンクバック：指名なし卓のみ
+      } else if(PCT_BACK_ITEMS.includes(o.name)){
+        staffBack[staffName].pct+=Math.round(o.price*o.qty*0.1); // シャンパンバック：全卓
+      }
+    });
 
-    // 指名バック → 指名あり卓のみ
+    // 指名バック → 指名あり卓のみ（全注文合計から計算）
     if(isShimeiTable){
-      const totalInc=g.orders.filter(o=>o.who==='guest').reduce((s,o)=>s+(o.price*o.qty),0);
+      const totalInc=g.orders.reduce((s,o)=>s+(o.price*o.qty),0);
       const totalExTax=Math.round(totalInc/1.1);
-      const champTotal=g.orders.filter(o=>o.who==='guest'&&CHAMPAGNE_NAMES.includes(o.name)).reduce((s,o)=>s+(o.price*o.qty),0);
+      const champTotal=g.orders.filter(o=>CHAMPAGNE_NAMES.includes(o.name)).reduce((s,o)=>s+(o.price*o.qty),0);
       const shimeiBase=totalExTax-champTotal;
       const shimeiBackTotal=Math.round(shimeiBase*0.1);
       const perStaff=Math.round(shimeiBackTotal/g.shimei.length);
