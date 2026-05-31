@@ -544,7 +544,7 @@ function renderGCard(g){
   const total=Math.round(sub*1.1);
   const payLabel=g.closed?(g.payMethod==='cash'?'現金':'カード'):'未会計';
   const payClass=g.closed?(g.payMethod==='cash'?'cash':'card'):'open';
-  return`<div class="gcard${g.closed?' closed':''}" data-group="${g.id}" data-open-kaikei="${g.id}" style="cursor:pointer;">
+  return`<div class="gcard${g.closed?' closed':''}" data-group="${g.id}" data-detail-group="${g.id}" style="cursor:pointer;">
     <div class="gcard-top">
       <div>
         <div class="gcard-name">${g.name}<span class="pay-badge ${payClass}">${payLabel}</span></div>
@@ -911,9 +911,9 @@ document.addEventListener('click', async function(e){
   if(salesGcard&&salesGcard.closest('#sales-content'))showGroupDetail(parseInt(salesGcard.dataset.group));
 
   // 売上タブのグループカード → 詳細モーダル
-  const salesGcard=e.target.closest('[data-open-kaikei]');
+  const salesGcard=e.target.closest('[data-detail-group]');
   if(salesGcard&&salesGcard.closest('#sales-content')){
-    showGroupDetail(parseInt(salesGcard.dataset.openKaikei));
+    showGroupDetail(parseInt(salesGcard.dataset.detailGroup));
     return;
   }
 
@@ -985,7 +985,34 @@ function showSessionDetail(sessionId){
   const d=new Date(session.startedAt);
   document.getElementById('detail-title').textContent=fmtDateJP(d);
   const sales=calcSales(sg);
-  let html=`<div class="total-box" style="margin-bottom:14px;"><div class="total-row"><span>💴 現金</span><span>¥${sales.cash.toLocaleString()}</span></div><div class="total-row"><span>💳 カード</span><span>¥${sales.card.toLocaleString()}</span></div><div class="total-row big"><span>売上合計（税込）</span><span>¥${sales.total.toLocaleString()}</span></div></div>`;
+
+  // バック集計
+  const closed=sg.filter(g=>g.closed);
+  const backData=calcBackForSession(closed);
+  let backHtml='';
+  Object.entries(backData).filter(([n,b])=>b.total>0).sort((a,b)=>b[1].total-a[1].total).forEach(([name,b])=>{
+    backHtml+=`<div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:10px 12px;margin-bottom:6px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <div style="font-size:13px;color:#fff;">${name}</div>
+        <div style="font-size:13px;color:#ff6b2b;font-weight:700;">¥${b.total.toLocaleString()}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;">
+        <div style="background:#111;border-radius:6px;padding:5px;text-align:center;"><div style="font-size:9px;color:#555;">ドリンク</div><div style="font-size:11px;color:#ccc;">¥${b.drink.toLocaleString()}</div></div>
+        <div style="background:#111;border-radius:6px;padding:5px;text-align:center;"><div style="font-size:9px;color:#555;">シャンパン</div><div style="font-size:11px;color:#ccc;">¥${b.pct.toLocaleString()}</div></div>
+        <div style="background:#111;border-radius:6px;padding:5px;text-align:center;"><div style="font-size:9px;color:#555;">指名</div><div style="font-size:11px;color:#ccc;">¥${b.shimei.toLocaleString()}</div></div>
+      </div>
+    </div>`;
+  });
+
+  let html=`
+    <div class="total-box" style="margin-bottom:14px;">
+      <div class="total-row"><span>💴 現金</span><span>¥${sales.cash.toLocaleString()}</span></div>
+      <div class="total-row"><span>💳 カード</span><span>¥${sales.card.toLocaleString()}</span></div>
+      <div class="total-row big"><span>売上合計（税込）</span><span>¥${sales.total.toLocaleString()}</span></div>
+    </div>
+    ${backHtml?`<div style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:8px;">バック明細</div>${backHtml}`:''}
+    <div style="font-size:10px;color:#555;letter-spacing:1px;margin:14px 0 8px;">伝票一覧</div>
+  `;
   html+=sg.map(g=>renderGCard(g)).join('');
   document.getElementById('detail-content').innerHTML=html;
   document.getElementById('detail-modal').classList.add('show');
