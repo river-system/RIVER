@@ -906,9 +906,9 @@ document.addEventListener('click', async function(e){
   const kaikeiBtn=e.target.closest('[data-kaikei]');
   if(kaikeiBtn)oOpenKaikei(parseInt(kaikeiBtn.dataset.kaikei));
 
-  // 売上タブのグループカード → 詳細モーダル
+  // 売上タブのグループカード → 詳細モーダル（sales-contentまたはdetail-content内）
   const salesGcard=e.target.closest('[data-detail-group]');
-  if(salesGcard&&salesGcard.closest('#sales-content')){
+  if(salesGcard&&(salesGcard.closest('#sales-content')||salesGcard.closest('#detail-content'))){
     showGroupDetail(parseInt(salesGcard.dataset.detailGroup));
     return;
   }
