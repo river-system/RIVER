@@ -567,6 +567,18 @@ function showGroupDetail(id){
   g.orders.forEach(o=>{const label=o.who==='guest'?'お客様':o.staff||'—';if(!byStaff[label])byStaff[label]=[];byStaff[label].push(o);});
   let html='';
 
+  // 指名スタッフ表示
+  if(g.shimei&&g.shimei.length>0){
+    html+=`<div style="background:#1a1200;border:1px solid #ff6b2b33;border-radius:10px;padding:10px 12px;margin-bottom:12px;">
+      <div style="font-size:10px;color:#ff6b2b;letter-spacing:1px;margin-bottom:6px;">指名スタッフ</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">
+        ${g.shimei.map(s=>`<span style="background:#ff6b2b22;border:1px solid #ff6b2b44;border-radius:20px;padding:4px 12px;font-size:13px;color:#ff6b2b;">${s}</span>`).join('')}
+      </div>
+    </div>`;
+  } else {
+    html+=`<div style="font-size:11px;color:#444;margin-bottom:12px;">指名なし卓</div>`;
+  }
+
   // 支払方法変更（会計済みのみ）
   if(g.closed){
     const payLabel=g.payMethod==='cash'?'💴 現金':'💳 カード';
