@@ -544,7 +544,16 @@ function renderGCard(g){
   const total=Math.round(sub*1.1);
   const payLabel=g.closed?(g.payMethod==='cash'?'現金':'カード'):'未会計';
   const payClass=g.closed?(g.payMethod==='cash'?'cash':'card'):'open';
-  return`<div class="gcard${g.closed?' closed':''}" data-group="${g.id}"><div class="gcard-top"><div><div class="gcard-name">${g.name}<span class="pay-badge ${payClass}">${payLabel}</span></div><div class="gcard-meta">${g.pax}名　指名：${g.shimei.length?g.shimei.join('・'):'なし'}</div></div><div class="gcard-price">¥${total.toLocaleString()}</div></div></div>`;
+  return`<div class="gcard${g.closed?' closed':''}" data-group="${g.id}" data-open-kaikei="${g.id}" style="cursor:pointer;">
+    <div class="gcard-top">
+      <div>
+        <div class="gcard-name">${g.name}<span class="pay-badge ${payClass}">${payLabel}</span></div>
+        <div class="gcard-meta">${g.pax}名　指名：${g.shimei.length?g.shimei.join('・'):'なし'}</div>
+        ${g.closed?`<div style="font-size:10px;color:#555;margin-top:3px;">タップで詳細・支払変更</div>`:`<div style="font-size:10px;color:#ff6b2b;margin-top:3px;">未会計</div>`}
+      </div>
+      <div class="gcard-price">¥${total.toLocaleString()}</div>
+    </div>
+  </div>`;
 }
 
 /* ---- 詳細モーダル ---- */
@@ -847,6 +856,16 @@ document.addEventListener('click', async function(e){
   // 売上タブのグループカード
   const salesGcard=e.target.closest('[data-group]');
   if(salesGcard&&salesGcard.closest('#sales-content'))showGroupDetail(parseInt(salesGcard.dataset.group));
+
+  // 売上タブのグループカード → 会計画面へ
+  const openKaikeiCard=e.target.closest('[data-open-kaikei]');
+  if(openKaikeiCard&&openKaikeiCard.closest('#sales-content')){
+    const gId=parseInt(openKaikeiCard.dataset.openKaikei);
+    oCurGroupId=gId;
+    switchMainTab('order');
+    oOpenKaikei(gId);
+    return;
+  }
 
   // 売上タブのセッションカード
   const sessionCard=e.target.closest('[data-session]');
