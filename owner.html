@@ -566,16 +566,69 @@ function showGroupDetail(id){
   const byStaff={};
   g.orders.forEach(o=>{const label=o.who==='guest'?'お客様':o.staff||'—';if(!byStaff[label])byStaff[label]=[];byStaff[label].push(o);});
   let html='';
+
+  // 支払方法変更（会計済みのみ）
+  if(g.closed){
+    const payLabel=g.payMethod==='cash'?'💴 現金':'💳 カード';
+    html+=`<div style="background:#1f1200;border:1px solid #ff6b2b44;border-radius:10px;padding:12px;margin-bottom:14px;">
+      <div style="font-size:11px;color:#ff6b2b;margin-bottom:8px;">会計済　${payLabel}　支払方法を変更：</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <button onclick="changePayMethodFromDetail(${g.id},'cash')" style="background:${g.payMethod==='cash'?'#1a2a1a':'#111'};border:2px solid ${g.payMethod==='cash'?'#4caf50':'#333'};border-radius:10px;padding:14px;color:${g.payMethod==='cash'?'#4caf50':'#666'};font-size:14px;cursor:pointer;">💴 現金</button>
+        <button onclick="changePayMethodFromDetail(${g.id},'card')" style="background:${g.payMethod==='card'?'#1a1f2a':'#111'};border:2px solid ${g.payMethod==='card'?'#5b9cf6':'#333'};border-radius:10px;padding:14px;color:${g.payMethod==='card'?'#5b9cf6':'#666'};font-size:14px;cursor:pointer;">💳 カード</button>
+      </div>
+    </div>`;
+  }
+
+  // 注文一覧
   Object.entries(byStaff).forEach(([staff,orders])=>{
     html+=`<div class="section-title">${staff}</div>`;
     const merged={};
     orders.forEach(o=>{if(!merged[o.name])merged[o.name]={name:o.name,price:o.price,qty:0};merged[o.name].qty+=o.qty;});
     html+=Object.values(merged).map(o=>`<div class="order-item"><div><div class="order-name">${o.name}</div><div class="order-meta">×${o.qty}</div></div><div class="order-price">${o.price>0?'¥'+(o.price*o.qty).toLocaleString():'時価'}</div></div>`).join('');
   });
+
+  // 合計
   html+=`<div class="total-box"><div class="total-row"><span>小計（税抜）</span><span>¥${sub.toLocaleString()}</span></div><div class="total-row tax"><span>消費税 10%</span><span>¥${tax.toLocaleString()}</span></div><div class="total-row big"><span>税込合計</span><span>¥${(sub+tax).toLocaleString()}</span></div></div>`;
-  if(g.deleteLogs&&g.deleteLogs.length){html+=`<div class="section-title" style="color:#e53935;">削除ログ</div>`;html+=g.deleteLogs.map(l=>`<div class="del-log"><div class="del-log-name">🗑 ${l.name} ×${l.qty}</div><div class="del-log-meta">削除者：${l.deletedBy}　${fmtDateTime(l.ts)}</div></div>`).join('');}
+
+  // バック明細（会計済みのみ）
+  if(g.closed){
+    const backData=calcBackForSession([g]);
+    const backEntries=Object.entries(backData).filter(([n,b])=>b.total>0);
+    if(backEntries.length){
+      html+=`<div class="section-title" style="margin-top:16px;">バック明細</div>`;
+      backEntries.forEach(([name,b])=>{
+        html+=`<div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:10px 12px;margin-bottom:6px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <div style="font-size:13px;color:#fff;">${name}</div>
+            <div style="font-size:14px;color:#ff6b2b;font-weight:700;">¥${b.total.toLocaleString()}</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;">
+            <div style="background:#111;border-radius:6px;padding:6px;text-align:center;"><div style="font-size:9px;color:#555;">ドリンク</div><div style="font-size:11px;color:#ccc;">¥${b.drink.toLocaleString()}</div></div>
+            <div style="background:#111;border-radius:6px;padding:6px;text-align:center;"><div style="font-size:9px;color:#555;">シャンパン</div><div style="font-size:11px;color:#ccc;">¥${b.pct.toLocaleString()}</div></div>
+            <div style="background:#111;border-radius:6px;padding:6px;text-align:center;"><div style="font-size:9px;color:#555;">指名</div><div style="font-size:11px;color:#ccc;">¥${b.shimei.toLocaleString()}</div></div>
+          </div>
+        </div>`;
+      });
+    }
+  }
+
+  // 削除ログ
+  if(g.deleteLogs&&g.deleteLogs.length){
+    html+=`<div class="section-title" style="color:#e53935;margin-top:16px;">削除ログ</div>`;
+    html+=g.deleteLogs.map(l=>`<div class="del-log"><div class="del-log-name">🗑 ${l.name} ×${l.qty}</div><div class="del-log-meta">削除者：${l.deletedBy}　${fmtDateTime(l.ts)}</div></div>`).join('');
+  }
+
   document.getElementById('detail-content').innerHTML=html;
   document.getElementById('detail-modal').classList.add('show');
+}
+
+async function changePayMethodFromDetail(groupId, method){
+  const g=groups.find(x=>x.id===groupId);
+  if(!g||!g.closed)return;
+  g.payMethod=method;
+  await saveGroup(g);
+  showGroupDetail(groupId); // 画面更新
+  renderSubTab(curSubTab);
 }
 
 /* ---- 注文タブ：グループ一覧 ---- */
@@ -857,13 +910,10 @@ document.addEventListener('click', async function(e){
   const salesGcard=e.target.closest('[data-group]');
   if(salesGcard&&salesGcard.closest('#sales-content'))showGroupDetail(parseInt(salesGcard.dataset.group));
 
-  // 売上タブのグループカード → 会計画面へ
-  const openKaikeiCard=e.target.closest('[data-open-kaikei]');
-  if(openKaikeiCard&&openKaikeiCard.closest('#sales-content')){
-    const gId=parseInt(openKaikeiCard.dataset.openKaikei);
-    oCurGroupId=gId;
-    switchMainTab('order');
-    oOpenKaikei(gId);
+  // 売上タブのグループカード → 詳細モーダル
+  const salesGcard=e.target.closest('[data-open-kaikei]');
+  if(salesGcard&&salesGcard.closest('#sales-content')){
+    showGroupDetail(parseInt(salesGcard.dataset.openKaikei));
     return;
   }
 
