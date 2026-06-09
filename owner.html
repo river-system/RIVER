@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="RIVER OWNER">
 <meta name="theme-color" content="#ff6b2b">
-<link rel="manifest" href="manifest-owner.json">
+<link rel="manifest" href="manifest.json">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BAR RIVER オーナー</title>
 <style>
@@ -486,7 +486,7 @@ function calcSales(groupList){
 }
 
 function renderSalesTab(){
-  const sg=curSessionId?groups.filter(g=>g.sessionId===curSessionId):[];
+  const sg=curSessionId?groups.filter(g=>g.sessionId===curSessionId||!g.sessionId):[];
   const session=sessions.find(s=>s.id===curSessionId);
   const sales=calcSales(sg);
   const d=session?new Date(session.startedAt):new Date();
@@ -507,11 +507,11 @@ function switchSubTab(tab){
 function renderSubTab(tab){
   const el=document.getElementById('sales-content');
   if(tab==='today'){
-    const sg=curSessionId?groups.filter(g=>g.sessionId===curSessionId):[];
+    const sg=curSessionId?groups.filter(g=>g.sessionId===curSessionId||!g.sessionId):[];
     if(!sg.length){el.innerHTML='<div style="color:#333;font-size:13px;text-align:center;padding:30px;">本日のデータなし</div>';return;}
     el.innerHTML=sg.map(g=>renderGCard(g)).join('');
   } else if(tab==='back'){
-    const sg=curSessionId?groups.filter(g=>g.sessionId===curSessionId):[];
+    const sg=curSessionId?groups.filter(g=>g.sessionId===curSessionId||!g.sessionId):[];
     const backData=calcBackForSession(sg);
     const entries=Object.entries(backData).sort((a,b)=>b[1].total-a[1].total);
     if(!entries.length){el.innerHTML='<div style="color:#333;font-size:13px;text-align:center;padding:30px;">バックデータなし（会計済みグループが必要です）</div>';return;}
@@ -1061,7 +1061,7 @@ async function oStartSession(){
 }
 
 function oOpenCloseModal(){
-  const sg=curSessionId?groups.filter(g=>g.sessionId===curSessionId):[];
+  const sg=curSessionId?groups.filter(g=>g.sessionId===curSessionId||!g.sessionId):[];
   const unclosed=sg.filter(g=>!g.closed);
   const sales=calcSales(sg);
   document.getElementById('o-close-modal-stats').innerHTML=`
