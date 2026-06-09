@@ -162,14 +162,14 @@ body{background:#050505;min-height:100vh;display:flex;justify-content:center;pad
 <!-- メインタブ -->
 <div style="padding:12px 16px 0;background:#0a0a0a;">
   <div class="main-tabs" id="main-tabs">
-    <div class="main-tab active" data-tab="order">注文入力</div>
-    <div class="main-tab" data-tab="sales">売上確認</div>
+    <div class="main-tab" data-tab="order">注文入力</div>
+    <div class="main-tab active" data-tab="sales">売上確認</div>
     <div class="main-tab" data-tab="staff-mgmt">スタッフ</div>
   </div>
 </div>
 
 <!-- 注文入力タブ -->
-<div class="screen active" id="sc-order-tab">
+<div class="screen" id="sc-order-tab">
   <!-- グループ一覧 -->
   <div id="o-groups-view">
     <div class="stitle">お客様グループ</div>
@@ -263,7 +263,7 @@ body{background:#050505;min-height:100vh;display:flex;justify-content:center;pad
 </div>
 
 <!-- 売上確認タブ -->
-<div class="screen" id="sc-sales-tab">
+<div class="screen active" id="sc-sales-tab">
   <div class="sales-card">
     <div class="sales-date" id="sales-date">—</div>
     <div class="sales-total" id="sales-total">¥0</div>
@@ -1100,6 +1100,7 @@ async function init(){
     document.getElementById('o-start-btn').style.display='block';
   }
   renderOGroups();
+  renderSalesTab(); // 起動時に売上確認を表示
   // 30秒ごとに自動更新
   setInterval(async()=>{await loadData();renderOGroups();},30000);
 }
