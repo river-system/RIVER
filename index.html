@@ -440,14 +440,18 @@ async function loadStaff(){
   CAN_KAIKEI=data.filter(s=>s.can_kaikei).map(s=>s.name);
 }
 const DAYS=['日','月','火','水','木','金','土'];
-const MENUS={
-  system:[{n:'チャーム',p:1500},{n:'飲み放題',p:3000},{n:'延長',p:1000},{n:'ダーツ',p:100}],
-  glass:[{n:'割りもの',p:700},{n:'グラス',p:700},{n:'缶',p:1000},{n:'瓶ビール',p:1000},{n:'チャミスル',p:3500}],
-  glass_staff:[{n:'グラス',p:700},{n:'缶',p:1000}],
-  shot:[{n:'テキーラ クエルボ',p:500},{n:'クライナー',p:700},{n:'コカボム',p:1000},{n:'アネホ',p:1000},{n:'観覧車 クエルボ',p:5000},{n:'観覧車 アネホ',p:10000},{n:'シップ クエルボ',p:10000},{n:'シップ アネホ',p:20000}],
-  champagne:[{n:'シャブリ',p:10000},{n:'ヴーヴイエロー',p:20000},{n:'ペリエ白',p:20000},{n:'モエアイス',p:24000},{n:'モエピカ',p:28000},{n:'モエネク',p:28000},{n:'ペリエロゼ',p:35000},{n:'ウルトラ',p:38000},{n:'ソウメイ',p:70000},{n:'ベルエポ',p:70000},{n:'ドンペリ白',p:80000},{n:'ドンペリロゼ',p:120000},{n:'アルマンドゴールド',p:140000},{n:'アルマンドロゼ',p:180000}],
-  bottle:[{n:'鏡月',p:3000},{n:'TAKUMA',p:3000},{n:'プレミアム鏡月',p:4000},{n:'黒桐島',p:4000},{n:'吉四六',p:5500},{n:'ジャックダニエル',p:6000},{n:'シーバスミズナラ',p:9500},{n:'響ブレンダーズ',p:35000},{n:'角',p:45000},{n:'山崎（時価）',p:0},{n:'山崎12年（時価）',p:0}]
-};
+let MENUS={system:[],glass:[],glass_staff:[],shot:[],champagne:[],bottle:[]};
+
+async function loadMenus(){
+  const data=await sbFetch('menus?active=eq.true&order=sort_order.asc');
+  if(!data)return;
+  MENUS={system:[],glass:[],glass_staff:[],shot:[],champagne:[],bottle:[]};
+  data.forEach(m=>{
+    if(MENUS[m.category]!==undefined){
+      MENUS[m.category].push({n:m.name,p:m.price});
+    }
+  });
+}
 
 let curStaff='',groups=[],sessions=[],curGroupId=null,curOrders=[],curWho='guest',curOtherStaff='',curTab='active',curSessionId=null;
 
@@ -498,6 +502,7 @@ async function saveOrders(groupId, orders){
 }
 
 async function loadData(){
+  await loadMenus();
   try{
     // セッションIDをlocalStorageから取得
     const cs=localStorage.getItem('river_cur_session');
