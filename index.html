@@ -300,7 +300,7 @@ body{background:#050505;min-height:100vh;display:flex;justify-content:center;pad
 <div class="screen" id="sc-kaikei">
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
     <button class="backbtn" onclick="goTo('sc-groups')">← 戻る</button>
-    <div class="stitle" style="margin:0;">会計</div>
+    <div class="stitle" style="margin:0;">注文確認</div>
   </div>
   <div class="kaikei-header">
     <div class="kaikei-gname" id="k-gname">—</div>
@@ -315,6 +315,7 @@ body{background:#050505;min-height:100vh;display:flex;justify-content:center;pad
     <div class="kaikei-row tax"><span>消費税 10%</span><span id="k-tax">¥0</span></div>
     <div class="kaikei-row big"><span>税込合計</span><span id="k-total">¥0</span></div>
   </div>
+  <button id="k-add-btn" onclick="openGroup(curGroupId)" style="display:block;width:100%;padding:14px;background:#1a1a1a;border:1px solid #333;border-radius:14px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:10px;">＋ 注文を追加する</button>
   <button class="close-btn" id="k-close-btn" onclick="openPayModal()">会計を締める ✓</button>
   <div id="k-closed-msg" style="display:none;text-align:center;padding:14px;color:#555;font-size:12px;"></div>
 </div>
@@ -504,9 +505,8 @@ async function loadData(){
     const sData=await sbFetch('sessions?order=started_at.asc');
     if(sData)sessions=sData.map(s=>({id:s.id,startedAt:s.started_at,closedAt:s.closed_at,dateLabel:s.date_label}));
 
-    // localStorageのセッションIDがSupabaseに存在しない or 閉店済みの場合はリセット
-    const foundSession=sessions.find(s=>s.id===curSessionId);
-    if(curSessionId&&(!foundSession||foundSession.closedAt)){
+    // localStorageのセッションIDがSupabaseに存在しない場合はリセット
+    if(curSessionId&&!sessions.find(s=>s.id===curSessionId)){
       curSessionId=null;
       localStorage.setItem('river_cur_session','');
     }
@@ -560,7 +560,7 @@ async function startSession(){
 }
 
 function openCloseModal(){
-  const sessionGroups=groups.filter(g=>g.sessionId===curSessionId||!g.sessionId);
+  const sessionGroups=groups.filter(g=>g.sessionId===curSessionId);
   const unclosed=sessionGroups.filter(g=>!g.closed);
   const closedGroups=sessionGroups.filter(g=>g.closed);
   const totalSales=closedGroups.reduce((s,g)=>{
@@ -592,7 +592,7 @@ async function confirmClose(){
   }
 
   // 閉店画面の集計
-  const sessionGroups=groups.filter(g=>g.sessionId===curSessionId||!g.sessionId);
+  const sessionGroups=groups.filter(g=>g.sessionId===curSessionId);
   const closedGroups=sessionGroups.filter(g=>g.closed);
   const totalSales=closedGroups.reduce((s,g)=>{
     return s+g.orders.reduce((a,o)=>a+(o.price*o.qty),0);
@@ -614,7 +614,6 @@ async function confirmClose(){
   `;
 
   curSessionId=null;
-  saveLocalSession(); // localStorageもクリア
   curStaff='';
   document.getElementById('hinfo').style.display='none';
   document.getElementById('logout-btn').style.display='none';
@@ -693,8 +692,8 @@ function selStaff(name){
 /* ---- Groups ---- */
 function renderGroups(){
   const el=document.getElementById('glist');
-  // 現セッションのみ表示（sessionId未設定のグループも含む）
-  const sessionGroups=groups.filter(g=>g.sessionId===curSessionId||!g.sessionId);
+  // 現セッションのみ表示
+  const sessionGroups=groups.filter(g=>g.sessionId===curSessionId);
   const list=sessionGroups.filter(g=>curTab==='active'?!g.closed:g.closed);
   if(!list.length){
     el.innerHTML=`<div style="color:#333;font-size:13px;text-align:center;padding:30px 0;">${curTab==='active'?'営業中のグループなし':'本日の履歴なし'}</div>`;
@@ -703,13 +702,10 @@ function renderGroups(){
   if(curTab==='active'){
     el.innerHTML=list.map(g=>{
       const sub=g.orders.reduce((s,o)=>s+(o.price*o.qty),0);
-      return `<div class="gcard" onclick="openGroup(${g.id})">
+      return `<div class="gcard" onclick="openKaikei(${g.id})">
         <div style="flex:1;">
           <div class="gname">${g.name}</div>
           <div class="gmeta">${g.pax}名　指名：${g.shimei.length?g.shimei.join('・'):'なし'}</div>
-          <div class="gcard-actions">
-            <div class="gcard-kaikei-btn" onclick="event.stopPropagation();openKaikei(${g.id})">会計 →</div>
-          </div>
         </div>
         <div class="gprice"><div class="gprice-num">¥${Math.round(sub*1.1).toLocaleString()}</div><div class="gprice-sub">税込</div></div>
       </div>`;
@@ -938,18 +934,22 @@ function openKaikei(id){
 
   const closeBtn=document.getElementById('k-close-btn');
   const closedMsg=document.getElementById('k-closed-msg');
+  const addBtn=document.getElementById('k-add-btn');
   if(g.closed){
     closeBtn.style.display='none';
+    addBtn.style.display='none';
     const payLabel=g.payMethod==='cash'?'💴 現金':'💳 カード';
     const dt=new Date(g.closedAt);
     closedMsg.style.display='block';
     closedMsg.textContent=`会計済　${payLabel}　${fmtTime(dt)}`;
   } else if(CAN_KAIKEI.includes(curStaff)){
     closeBtn.style.display='block';
+    addBtn.style.display='block';
     closedMsg.style.display='none';
     document.getElementById('pay-amount-disp').textContent='¥'+total.toLocaleString();
   } else {
     closeBtn.style.display='none';
+    addBtn.style.display='block';
     closedMsg.style.display='block';
     closedMsg.textContent='会計締めはなおと・りんが行います';
   }
