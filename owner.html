@@ -441,13 +441,17 @@ async function loadData(){
   const sData=await sbFetch('sessions?order=started_at.asc');
   if(sData)sessions=sData.map(s=>({id:s.id,startedAt:s.started_at,closedAt:s.closed_at,dateLabel:s.date_label}));
 
-  // 今日の未閉店セッションを自動で拾う（複数端末共有対応）
-  const today=new Date().toISOString().slice(0,10);
-  const activeSession=sessions.find(s=>!s.closedAt&&s.startedAt&&s.startedAt.slice(0,10)===today);
-  if(activeSession){
-    curSessionId=activeSession.id;
-  } else {
-    curSessionId=null;
+  // 今日の未閉店セッションを自動で拾う（複数端末共有対応・JST基準）
+  // 手動で閉店した場合はスキップ
+  if(!manualClosed){
+    const nowJST=new Date(Date.now()+9*60*60*1000);
+    const today=nowJST.toISOString().slice(0,10);
+    const activeSession=sessions.find(s=>!s.closedAt&&s.startedAt&&new Date(new Date(s.startedAt).getTime()+9*60*60*1000).toISOString().slice(0,10)===today);
+    if(activeSession){
+      curSessionId=activeSession.id;
+    } else {
+      curSessionId=null;
+    }
   }
   const gData=await sbFetch('groups?order=id.asc&select=*,orders(*)');
   if(gData){
@@ -1078,6 +1082,7 @@ function showSessionDetail(sessionId){
 async function oStartSession(){
   const now=new Date();
   curSessionId='session_'+now.getTime();
+  manualClosed=false; // 営業開始時にフラグリセット
   const session={id:curSessionId,startedAt:now.toISOString(),closedAt:null,dateLabel:fmtDate(now)};
   sessions.push(session);
   localStorage.setItem('river_cur_session',curSessionId);
@@ -1110,6 +1115,7 @@ async function oConfirmClose(){
   }
   localStorage.setItem('river_cur_session','');
   curSessionId=null;
+  manualClosed=true; // 手動閉店フラグ
   document.getElementById('o-session-badge').textContent='';
   document.getElementById('o-start-btn').style.display='block';
   document.getElementById('o-close-btn').style.display='none';
