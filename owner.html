@@ -492,6 +492,13 @@ function calcSales(groupList){
 }
 
 function renderSalesTab(){
+  // curSessionIdがない場合は今日のセッションを探す
+  if(!curSessionId){
+    const nowJST=new Date(Date.now()+9*60*60*1000);
+    const today=nowJST.toISOString().slice(0,10);
+    const todaySession=sessions.find(s=>s.startedAt&&new Date(new Date(s.startedAt).getTime()+9*60*60*1000).toISOString().slice(0,10)===today);
+    if(todaySession)curSessionId=todaySession.id;
+  }
   const sg=curSessionId?groups.filter(g=>g.sessionId===curSessionId||!g.sessionId):[];
   const session=sessions.find(s=>s.id===curSessionId);
   const sales=calcSales(sg);
