@@ -449,6 +449,7 @@ async function loadData(){
     groups=gData.map(g=>({
       id:g.id,sessionId:g.session_id,name:g.name,pax:g.pax,
       shimei:g.shimei||[],closed:g.closed,closedAt:g.closed_at,
+      createdAt:g.created_at,
       payMethod:g.pay_method,deleteLogs:g.delete_logs||[],
       orders:(g.orders||[]).map(o=>({name:o.name,price:o.price,qty:o.qty,who:o.who,staff:o.staff,custom:o.custom,ts:o.ts}))
     }));
@@ -569,7 +570,11 @@ function renderGCard(g){
       <div>
         <div class="gcard-name">${g.name}<span class="pay-badge ${payClass}">${payLabel}</span></div>
         <div class="gcard-meta">${g.pax}名　指名：${g.shimei.length?g.shimei.join('・'):'なし'}</div>
-        ${g.closed?`<div style="font-size:10px;color:#555;margin-top:3px;">タップで詳細・支払変更</div>`:`<div style="font-size:10px;color:#ff6b2b;margin-top:3px;">未会計</div>`}
+        <div style="font-size:10px;color:#555;margin-top:3px;">
+          ${g.createdAt?fmtTime(new Date(g.createdAt))+' 入店':''}
+          ${g.closed&&g.closedAt?' 〜 '+fmtTime(new Date(g.closedAt))+' 会計済':''}
+          ${!g.closed?'<span style="color:#ff6b2b;">　未会計</span>':''}
+        </div>
       </div>
       <div class="gcard-price">¥${total.toLocaleString()}</div>
     </div>

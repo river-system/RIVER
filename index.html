@@ -177,7 +177,7 @@ body{background:#050505;min-height:100vh;display:flex;justify-content:center;pad
   <div class="logo">BAR <span>RIVER</span></div>
   <div style="display:flex;align-items:center;gap:8px;">
     <span id="hinfo" style="color:#ff6b2b;font-size:12px;font-weight:500;display:none;"></span>
-    <button id="logout-btn" onclick="goTo('sc-staff');curStaff='';curOrders=[];" style="display:none;background:transparent;border:none;color:#fff;font-size:11px;cursor:pointer;padding:4px 6px;">変更</button>
+    <button id="logout-btn" onclick="try{localStorage.removeItem('river_cur_staff');}catch(e){} goTo('sc-staff');curStaff='';curOrders=[];" style="display:none;background:transparent;border:none;color:#fff;font-size:11px;cursor:pointer;padding:4px 6px;">変更</button>
     <button class="header-close-btn" id="header-close-btn" style="display:none;" onclick="openCloseModal()">閉店</button>
   </div>
 </div>
@@ -494,7 +494,8 @@ async function saveGroup(g){
 }
 
 async function insertGroup(g){
-  const data={id:g.id,session_id:g.sessionId,name:g.name,pax:g.pax,shimei:g.shimei,closed:false,delete_logs:[]};
+  const now=new Date().toISOString();
+  const data={id:g.id,session_id:g.sessionId,name:g.name,pax:g.pax,shimei:g.shimei,closed:false,delete_logs:[],created_at:now};
   await sbFetch('groups','POST',data);
 }
 
@@ -522,6 +523,7 @@ async function loadData(){
       groups=gData.map(g=>({
         id:g.id,sessionId:g.session_id,name:g.name,pax:g.pax,
         shimei:g.shimei||[],closed:g.closed,closedAt:g.closed_at,
+        createdAt:g.created_at,
         payMethod:g.pay_method,deleteLogs:g.delete_logs||[],
         orders:(g.orders||[]).map(o=>({name:o.name,price:o.price,qty:o.qty,who:o.who,staff:o.staff,custom:o.custom,ts:o.ts}))
       }));
@@ -678,6 +680,7 @@ function switchTab(tab){
 /* ---- Staff ---- */
 function selStaff(name){
   curStaff=name;
+  try{localStorage.setItem('river_cur_staff',name);}catch(e){}
   document.getElementById('hinfo').textContent=name;
   document.getElementById('hinfo').style.display='inline';
   document.getElementById('logout-btn').style.display='inline';
@@ -707,10 +710,12 @@ function renderGroups(){
   if(curTab==='active'){
     el.innerHTML=list.map(g=>{
       const sub=g.orders.reduce((s,o)=>s+(o.price*o.qty),0);
+      const createdTime=g.createdAt?fmtTime(new Date(g.createdAt)):'';
       return `<div class="gcard" onclick="openKaikei(${g.id})">
         <div style="flex:1;">
           <div class="gname">${g.name}</div>
           <div class="gmeta">${g.pax}名　指名：${g.shimei.length?g.shimei.join('・'):'なし'}</div>
+          ${createdTime?`<div style="font-size:10px;color:#555;margin-top:3px;">入店 ${createdTime}</div>`:''}
         </div>
         <div class="gprice"><div class="gprice-num">¥${Math.round(sub*1.1).toLocaleString()}</div><div class="gprice-sub">税込</div></div>
       </div>`;
@@ -724,11 +729,12 @@ function renderGroups(){
       const payClass=g.payMethod==='cash'?'cash':'card';
       const dt=new Date(g.closedAt);
       const timeStr=fmtTime(dt);
+      const createdStr=g.createdAt?fmtTime(new Date(g.createdAt)):'';
       return `<div class="gcard" onclick="openKaikei(${g.id})" style="opacity:0.75;">
         <div style="flex:1;">
           <div class="gname">${g.name}<span class="pay-badge ${payClass}">${payLabel}</span></div>
           <div class="gmeta">${g.pax}名　指名：${g.shimei.length?g.shimei.join('・'):'なし'}</div>
-          <div class="hist-time">${timeStr} 会計済</div>
+          <div class="hist-time">${createdStr?createdStr+' 入店 〜 ':''}${timeStr} 会計済</div>
         </div>
         <div class="gprice"><div class="gprice-num">¥${total.toLocaleString()}</div><div class="gprice-sub">税込</div></div>
       </div>`;
@@ -1074,9 +1080,17 @@ async function init(){
   if(!localStorage.getItem('river_tutorial_done')){
     showTutorial();
   }
-  // 常にスタッフ選択画面へ
-  goTo('sc-staff');
-  renderStaffGrid();
+  // localStorageからスタッフ復元
+  const savedStaff=localStorage.getItem('river_cur_staff');
+  if(savedStaff&&STAFF.includes(savedStaff)){
+    curStaff=savedStaff;
+    renderHeader();
+    goTo('sc-groups');
+    renderGroups();
+  } else {
+    goTo('sc-staff');
+    renderStaffGrid();
+  }
 }
 init();
 </script>
