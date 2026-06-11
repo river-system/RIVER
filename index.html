@@ -182,22 +182,17 @@ body{background:#050505;min-height:100vh;display:flex;justify-content:center;pad
   </div>
 </div>
 
-<!-- 営業開始画面 -->
-<div class="screen active" id="sc-open">
+<!-- 営業開始画面（スタッフ選択に直通）-->
+<div class="screen" id="sc-open">
   <div class="open-screen">
     <div class="open-logo">BAR <span>RIVER</span></div>
     <div class="open-date" id="open-date">—</div>
     <div class="open-day" id="open-day">—</div>
-    <div class="open-session" id="open-session-info" style="display:none;">
-      <div class="open-session-label">前回の営業</div>
-      <div class="open-session-val" id="open-last-session">—</div>
-    </div>
-    <button class="open-btn" onclick="startSession()">営業スタート 🍸</button>
   </div>
 </div>
 
 <!-- スタッフ選択 -->
-<div class="screen" id="sc-staff">
+<div class="screen active" id="sc-staff">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
     <div class="stitle" style="margin:0;">スタッフ選択</div>
     <div id="session-date-badge" class="session-badge"></div>
@@ -327,9 +322,7 @@ body{background:#050505;min-height:100vh;display:flex;justify-content:center;pad
     <div class="closed-title">お疲れ様でした！</div>
     <div class="closed-sub" id="closed-date-str">—</div>
     <div class="closed-stats" id="closed-stats"></div>
-    <div class="closed-btn-wrap">
-      <button class="reopen-btn" onclick="startSession()">新しい営業を始める</button>
-    </div>
+
   </div>
 </div>
 
@@ -508,15 +501,8 @@ async function loadData(){
     const sData=await sbFetch('sessions?order=started_at.asc');
     if(sData)sessions=sData.map(s=>({id:s.id,startedAt:s.started_at,closedAt:s.closed_at,dateLabel:s.date_label}));
 
-    // 今日の未閉店セッションを自動で拾う（複数端末共有対応・JST基準）
-    const nowJST=new Date(Date.now()+9*60*60*1000);
-    const today=nowJST.toISOString().slice(0,10);
-    const activeSession=sessions.find(s=>!s.closedAt&&s.startedAt&&new Date(new Date(s.startedAt).getTime()+9*60*60*1000).toISOString().slice(0,10)===today);
-    if(activeSession){
-      curSessionId=activeSession.id;
-    } else {
-      curSessionId=null;
-    }
+    // セッションは自動取得しない（グループ作成時に明示的に選ぶ）
+    curSessionId=null;
 
     // グループと注文を取得
     const gData=await sbFetch('groups?order=id.asc&select=*,orders(*)');
@@ -740,6 +726,20 @@ function renderGroups(){
 
 function toggleAddGroup(){
   if(!curSessionId){
+    const nowJST=new Date(Date.now()+9*60*60*1000);
+    const today=nowJST.toISOString().slice(0,10);
+    const activeSession=sessions.find(s=>!s.closedAt&&s.startedAt&&new Date(new Date(s.startedAt).getTime()+9*60*60*1000).toISOString().slice(0,10)===today);
+    const btnArea=document.getElementById('session-btn-area');
+    if(activeSession){
+      btnArea.innerHTML=`
+        <button onclick="continueSessionFromModal('${activeSession.id}')" style="display:block;width:100%;padding:14px;background:#ff6b2b;border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:10px;">今日の営業を継続する 🍸</button>
+        <button onclick="startSessionFromModal()" style="display:block;width:100%;padding:12px;background:transparent;border:1px solid #555;border-radius:12px;color:#888;font-size:13px;cursor:pointer;margin-bottom:10px;">新しく営業を開始する</button>
+        <button onclick="document.getElementById('session-confirm-modal').style.display='none'" style="display:block;width:100%;padding:12px;background:transparent;border:1px solid #333;border-radius:12px;color:#555;font-size:13px;cursor:pointer;">キャンセル</button>`;
+    } else {
+      btnArea.innerHTML=`
+        <button onclick="startSessionFromModal()" style="display:block;width:100%;padding:14px;background:#ff6b2b;border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:10px;">営業を開始する 🍸</button>
+        <button onclick="document.getElementById('session-confirm-modal').style.display='none'" style="display:block;width:100%;padding:12px;background:transparent;border:1px solid #333;border-radius:12px;color:#555;font-size:13px;cursor:pointer;">キャンセル</button>`;
+    }
     document.getElementById('session-confirm-modal').style.display='flex';
     return;
   }
@@ -757,8 +757,19 @@ async function startSessionFromModal(){
   await insertSession(session);
   document.getElementById('session-date-badge').textContent=fmtDateJP(now);
   document.getElementById('header-close-btn').style.display='block';
-  const f=document.getElementById('addgroup-form');
-  f.style.display='block';
+  document.getElementById('addgroup-form').style.display='block';
+}
+
+async function continueSessionFromModal(sessionId){
+  document.getElementById('session-confirm-modal').style.display='none';
+  curSessionId=sessionId;
+  saveLocalSession();
+  const session=sessions.find(s=>s.id===curSessionId);
+  if(session){
+    document.getElementById('session-date-badge').textContent=fmtDateJP(new Date(session.startedAt));
+  }
+  document.getElementById('header-close-btn').style.display='block';
+  document.getElementById('addgroup-form').style.display='block';
 }
 
 async function createGroup(){
@@ -1075,8 +1086,7 @@ init();
   <div style="background:#1a1a1a;border:1px solid #333;border-radius:20px;padding:28px 24px;width:100%;max-width:320px;">
     <div style="font-size:18px;font-weight:600;color:#fff;text-align:center;margin-bottom:8px;">営業を開始しますか？</div>
     <div style="font-size:13px;color:#555;text-align:center;margin-bottom:24px;">セッションが開始されていません。<br>営業を開始してからご利用ください。</div>
-    <button onclick="startSessionFromModal()" style="display:block;width:100%;padding:14px;background:#ff6b2b;border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:10px;">営業を開始する 🍸</button>
-    <button onclick="document.getElementById('session-confirm-modal').style.display='none'" style="display:block;width:100%;padding:12px;background:transparent;border:1px solid #333;border-radius:12px;color:#555;font-size:13px;cursor:pointer;">キャンセル</button>
+    <div id="session-btn-area"></div>
   </div>
 </div>
 
