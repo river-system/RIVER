@@ -692,6 +692,11 @@ function renderOGroups(){
 }
 
 async function oCreateGroup(){
+  if(!curSessionId){
+    document.getElementById('o-addgroup-form').style.display='none';
+    document.getElementById('o-session-confirm-modal').style.display='flex';
+    return;
+  }
   const name=document.getElementById('o-gname-in').value.trim()||'新規';
   const pax=parseInt(document.getElementById('o-gpax-in').value)||1;
   const shimei=[...document.querySelectorAll('#o-shimei-sel .msbtn.sel')].map(el=>el.textContent);
@@ -1175,7 +1180,7 @@ async function init(){
   renderOGroups();
   renderSalesTab(); // 起動時に売上確認を表示
   // 30秒ごとに自動更新
-  setInterval(async()=>{await loadData();renderOGroups();},30000);
+  setInterval(async()=>{await loadData();renderOGroups();},10000);
 }
 init();
 </script>
