@@ -441,18 +441,9 @@ async function loadData(){
   const sData=await sbFetch('sessions?order=started_at.asc');
   if(sData)sessions=sData.map(s=>({id:s.id,startedAt:s.started_at,closedAt:s.closed_at,dateLabel:s.date_label}));
 
-  // 今日の未閉店セッションを自動で拾う（複数端末共有対応・JST基準）
-  // 手動で閉店した場合はスキップ
-  if(!manualClosed){
-    const nowJST=new Date(Date.now()+9*60*60*1000);
-    const today=nowJST.toISOString().slice(0,10);
-    const activeSession=sessions.find(s=>!s.closedAt&&s.startedAt&&new Date(new Date(s.startedAt).getTime()+9*60*60*1000).toISOString().slice(0,10)===today);
-    if(activeSession){
-      curSessionId=activeSession.id;
-    } else {
-      curSessionId=null;
-    }
-  }
+  // セッションは自動取得しない
+  // グループ作成時に明示的に開始or継続を選ぶ
+  curSessionId=null;
   const gData=await sbFetch('groups?order=id.asc&select=*,orders(*)');
   if(gData){
     groups=gData.map(g=>({
@@ -979,7 +970,23 @@ document.addEventListener('click', async function(e){
 // グループ追加ボタン
 document.getElementById('o-addgroup-btn').addEventListener('click',()=>{
   if(!curSessionId){
-    document.getElementById('o-session-confirm-modal').style.display='flex';
+    // 今日の未閉店セッションがあれば継続を提案
+    const nowJST=new Date(Date.now()+9*60*60*1000);
+    const today=nowJST.toISOString().slice(0,10);
+    const activeSession=sessions.find(s=>!s.closedAt&&s.startedAt&&new Date(new Date(s.startedAt).getTime()+9*60*60*1000).toISOString().slice(0,10)===today);
+    const modal=document.getElementById('o-session-confirm-modal');
+    const btnArea=document.getElementById('o-session-btn-area');
+    if(activeSession){
+      btnArea.innerHTML=`
+        <button onclick="continueSessionFromOModal('${activeSession.id}')" style="display:block;width:100%;padding:14px;background:#ff6b2b;border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:10px;">今日の営業を継続する 🍸</button>
+        <button onclick="startSessionFromOModal()" style="display:block;width:100%;padding:12px;background:transparent;border:1px solid #555;border-radius:12px;color:#888;font-size:13px;cursor:pointer;margin-bottom:10px;">新しく営業を開始する</button>
+        <button onclick="document.getElementById('o-session-confirm-modal').style.display='none'" style="display:block;width:100%;padding:12px;background:transparent;border:1px solid #333;border-radius:12px;color:#555;font-size:13px;cursor:pointer;">キャンセル</button>`;
+    } else {
+      btnArea.innerHTML=`
+        <button onclick="startSessionFromOModal()" style="display:block;width:100%;padding:14px;background:#ff6b2b;border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:10px;">営業を開始する 🍸</button>
+        <button onclick="document.getElementById('o-session-confirm-modal').style.display='none'" style="display:block;width:100%;padding:12px;background:transparent;border:1px solid #333;border-radius:12px;color:#555;font-size:13px;cursor:pointer;">キャンセル</button>`;
+    }
+    modal.style.display='flex';
     return;
   }
   const f=document.getElementById('o-addgroup-form');
@@ -993,11 +1000,23 @@ async function startSessionFromOModal(){
   document.getElementById('o-session-confirm-modal').style.display='none';
   const now=new Date();
   curSessionId='session_'+now.getTime();
+  manualClosed=false;
   const session={id:curSessionId,startedAt:now.toISOString(),closedAt:null,dateLabel:fmtDate(now)};
   sessions.push(session);
-  localStorage.setItem('river_cur_session',curSessionId);
   await insertSession(session);
   updateSessionBadge();
+  openAddGroupForm();
+}
+
+async function continueSessionFromOModal(sessionId){
+  document.getElementById('o-session-confirm-modal').style.display='none';
+  curSessionId=sessionId;
+  manualClosed=false;
+  updateSessionBadge();
+  openAddGroupForm();
+}
+
+function openAddGroupForm(){
   const f=document.getElementById('o-addgroup-form');
   f.style.display='block';
   document.getElementById('o-shimei-sel').innerHTML=STAFF.map(s=>`<div class="msbtn" onclick="this.classList.toggle('sel')">${s}</div>`).join('');
@@ -1153,8 +1172,7 @@ init();
   <div style="background:#1a1a1a;border:1px solid #333;border-radius:20px;padding:28px 24px;width:100%;max-width:320px;">
     <div style="font-size:18px;font-weight:600;color:#fff;text-align:center;margin-bottom:8px;">開店してください 🍸</div>
     <div style="font-size:13px;color:#555;text-align:center;margin-bottom:24px;">営業が開始されていません。<br>開店してからグループを作成してください。</div>
-    <button onclick="startSessionFromOModal()" style="display:block;width:100%;padding:14px;background:#ff6b2b;border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:10px;">営業を開始する 🍸</button>
-    <button onclick="document.getElementById('o-session-confirm-modal').style.display='none'" style="display:block;width:100%;padding:12px;background:transparent;border:1px solid #333;border-radius:12px;color:#555;font-size:13px;cursor:pointer;">キャンセル</button>
+    <div id="o-session-btn-area"></div>
   </div>
 </div>
 
