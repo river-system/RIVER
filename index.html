@@ -198,7 +198,7 @@ body{background:#050505;min-height:100vh;display:flex;justify-content:center;pad
     <div id="session-date-badge" class="session-badge"></div>
   </div>
   <div class="staff-grid">
-    <div id="staff-grid-dynamic"></div>
+    <div id="staff-grid-dynamic" style="display:contents;"></div>
 
   </div>
 </div>
@@ -423,11 +423,23 @@ let CAN_CLOSE=[];
 let CAN_KAIKEI=[];
 
 async function loadStaff(){
-  const data=await sbFetch('staff?active=eq.true&order=id.asc');
-  if(!data)return;
-  const OWNER_NAMES=['りいや']; // オーナーはスタッフ選択に表示しない
+  const OWNER_NAMES=['りいや'];
+  const FALLBACK_STAFF=[
+    {name:'なおと',can_edit:true,can_close:true,can_kaikei:true},
+    {name:'りん',can_edit:true,can_close:true,can_kaikei:true},
+    {name:'りょうせい',can_edit:false,can_close:false,can_kaikei:false},
+    {name:'そうたろう',can_edit:false,can_close:false,can_kaikei:false},
+    {name:'あやと',can_edit:false,can_close:false,can_kaikei:false},
+    {name:'ゆうせい',can_edit:false,can_close:false,can_kaikei:false},
+    {name:'としき',can_edit:false,can_close:false,can_kaikei:false},
+    {name:'かなた',can_edit:false,can_close:false,can_kaikei:false},
+    {name:'けんしろう',can_edit:true,can_close:false,can_kaikei:true},
+    {name:'いっこう',can_edit:true,can_close:false,can_kaikei:true},
+    {name:'りいや',can_edit:true,can_close:true,can_kaikei:true},
+  ];
+  const data=await sbFetch('staff?active=eq.true&order=id.asc')||FALLBACK_STAFF;
   STAFF=data.filter(s=>!OWNER_NAMES.includes(s.name)).map(s=>s.name);
-  ALL_STAFF=data.map(s=>s.name); // 他スタッフ・指名には全員表示
+  ALL_STAFF=data.map(s=>s.name);
   CAN_EDIT=data.filter(s=>s.can_edit).map(s=>s.name);
   CAN_CLOSE=data.filter(s=>s.can_close).map(s=>s.name);
   CAN_KAIKEI=data.filter(s=>s.can_kaikei).map(s=>s.name);
