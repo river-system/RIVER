@@ -455,9 +455,10 @@ async function loadData(){
   const sData=await sbFetch('sessions?order=started_at.asc');
   if(sData)sessions=sData.map(s=>({id:s.id,startedAt:s.started_at,closedAt:s.closed_at,dateLabel:s.date_label}));
 
-  // セッションは自動取得しない
-  // グループ作成時に明示的に開始or継続を選ぶ
-  curSessionId=null;
+  // 未閉店セッションがあれば自動で使う
+  const openSession=sessions.find(s=>!s.closedAt);
+  if(openSession)curSessionId=openSession.id;
+  else if(!sessions.find(s=>s.id===curSessionId))curSessionId=null;
   const gData=await sbFetch('groups?order=id.asc&select=*,orders(*)');
   if(gData){
     groups=gData.map(g=>({
