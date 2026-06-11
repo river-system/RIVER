@@ -508,9 +508,10 @@ async function loadData(){
     const sData=await sbFetch('sessions?order=started_at.asc');
     if(sData)sessions=sData.map(s=>({id:s.id,startedAt:s.started_at,closedAt:s.closed_at,dateLabel:s.date_label}));
 
-    // 今日の未閉店セッションを自動で拾う（複数端末共有対応）
-    const today=new Date().toISOString().slice(0,10);
-    const activeSession=sessions.find(s=>!s.closedAt&&s.startedAt&&s.startedAt.slice(0,10)===today);
+    // 今日の未閉店セッションを自動で拾う（複数端末共有対応・JST基準）
+    const nowJST=new Date(Date.now()+9*60*60*1000);
+    const today=nowJST.toISOString().slice(0,10);
+    const activeSession=sessions.find(s=>!s.closedAt&&s.startedAt&&new Date(new Date(s.startedAt).getTime()+9*60*60*1000).toISOString().slice(0,10)===today);
     if(activeSession){
       curSessionId=activeSession.id;
     } else {
