@@ -1156,6 +1156,18 @@ async function init(){
   }
 }
 init();
+
+// 10秒ごとにメニュー・グループ等を自動更新（owner.htmlと同じ間隔）
+// 注文入力中の画面を急に再描画すると操作の邪魔になるので、グループ一覧を見てる時だけ画面も更新する
+setInterval(async()=>{
+  try{
+    await loadStaff();
+    await loadData();
+    if(document.getElementById('sc-groups')?.classList.contains('active')){
+      renderGroups();
+    }
+  }catch(e){console.error('auto refresh error:',e);}
+},10000);
 </script>
 <!-- 営業開始確認モーダル -->
 <div id="session-confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1000;align-items:center;justify-content:center;padding:24px;">
