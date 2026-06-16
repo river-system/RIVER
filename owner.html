@@ -274,7 +274,16 @@ body{background:#050505;min-height:100vh;display:flex;justify-content:center;pad
     <div class="kaikei-total-box">
       <div class="kaikei-row"><span>小計（税抜）</span><span id="o-k-subtotal">¥0</span></div>
       <div class="kaikei-row tax"><span>消費税 10%</span><span id="o-k-tax">¥0</span></div>
-      <div class="kaikei-row big"><span>税込合計</span><span id="o-k-total">¥0</span></div>
+      <div class="kaikei-row"><span>税込小計</span><span id="o-k-pretax-total">¥0</span></div>
+      <div class="kaikei-row" id="o-k-discount-row" style="display:none;align-items:center;">
+        <span>サービス</span>
+        <span style="display:flex;align-items:center;gap:4px;">
+          <span style="color:#ff6b2b;">−¥</span>
+          <input type="number" id="o-k-discount-input" placeholder="0" oninput="oUpdateKaikeiTotal()" style="width:80px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;color:#fff;font-size:13px;text-align:right;">
+        </span>
+      </div>
+      <div class="kaikei-row" id="o-k-discount-fixed-row" style="display:none;color:#ff6b2b;"><span>サービス</span><span id="o-k-discount-fixed-val">−¥0</span></div>
+      <div class="kaikei-row big"><span>お会計金額</span><span id="o-k-total">¥0</span></div>
     </div>
     <button class="close-btn" id="o-k-close-btn" onclick="oOpenPayModal()">会計を締める ✓</button>
     <div id="o-k-closed-msg" style="display:none;text-align:center;padding:14px;color:#555;font-size:12px;"></div>
@@ -385,33 +394,20 @@ function calcBackForSession(sessionGroups){
 
     // ドリンクバック・シャンパンバック
     g.orders.forEach(o=>{
-      // 指名あり卓でguestのシャンパン→指名スタッフに自動付与
-      if(PCT_BACK_ITEMS.includes(o.name)&&isShimeiTable&&o.who==='guest'){
-        const champBack=Math.round(o.price*o.qty*0.1);
-        g.shimei.forEach(s=>{
-          if(NO_BACK_STAFF.includes(s))return;
-          if(!staffBack[s])staffBack[s]={drink:0,pct:0,shimei:0,total:0};
-          staffBack[s].pct+=Math.round(champBack/g.shimei.length);
-        });
-        return;
-      }
       if(o.who!=='self'&&o.who!=='other')return;
       const staffName=o.staff||'';
       if(!staffName)return;
-      if(NO_BACK_STAFF.includes(staffName))return;
+      if(NO_BACK_STAFF.includes(staffName))return; // バック対象外スタッフはスキップ
       if(!staffBack[staffName])staffBack[staffName]={drink:0,pct:0,shimei:0,total:0};
       if(DRINK_BACK_ITEMS.includes(o.name)){
-        // ドリンクバック：指名あり卓で、入力者が指名スタッフ自身の場合はノーカウント
-        if(isShimeiTable&&g.shimei.includes(staffName)){
-          // ノーカウント
-        } else {
+        // ドリンクバック：指名なし卓は全員、指名あり卓はother（他スタッフ）のみ
+        if(!isShimeiTable||o.who==='other'){
           staffBack[staffName].drink+=o.qty*100;
         }
       } else if(PCT_BACK_ITEMS.includes(o.name)){
-        // 指名あり卓でself/other→個人優先、指名なし卓→入力スタッフ
-        staffBack[staffName].pct+=Math.round(o.price*o.qty*0.1);
+        staffBack[staffName].pct+=Math.round(o.price*o.qty*0.1); // シャンパンバック：全卓
       } else if(o.custom){
-        staffBack[staffName].pct+=Math.round(o.price*o.qty*0.1);
+        staffBack[staffName].pct+=Math.round(o.price*o.qty*0.1); // カスタム追加：自分・スタッフは10%バック
       }
     });
 
@@ -468,20 +464,17 @@ async function loadData(){
   const sData=await sbFetch('sessions?order=started_at.asc');
   if(sData)sessions=sData.map(s=>({id:s.id,startedAt:s.started_at,closedAt:s.closed_at,dateLabel:s.date_label}));
 
-  // 未閉店セッションがあれば自動で使う（10秒更新でも維持）
+  // 未閉店セッションがあれば自動で使う
   const openSession=sessions.find(s=>!s.closedAt);
-  if(openSession){
-    curSessionId=openSession.id;
-  } else if(curSessionId&&!sessions.find(s=>s.id===curSessionId)){
-    curSessionId=null;
-  }
+  if(openSession)curSessionId=openSession.id;
+  else if(!sessions.find(s=>s.id===curSessionId))curSessionId=null;
   const gData=await sbFetch('groups?order=id.asc&select=*,orders(*)');
   if(gData){
     groups=gData.map(g=>({
       id:g.id,sessionId:g.session_id,name:g.name,pax:g.pax,
       shimei:g.shimei||[],closed:g.closed,closedAt:g.closed_at,
       createdAt:g.created_at,
-      payMethod:g.pay_method,deleteLogs:g.delete_logs||[],
+      payMethod:g.pay_method,deleteLogs:g.delete_logs||[],discount:g.discount||0,
       orders:(g.orders||[]).map(o=>({name:o.name,price:o.price,qty:o.qty,who:o.who,staff:o.staff,custom:o.custom,ts:o.ts}))
     }));
   }
@@ -490,7 +483,7 @@ async function loadData(){
 }
 
 async function saveGroup(g){
-  const data={session_id:g.sessionId,name:g.name,pax:g.pax,shimei:g.shimei,closed:g.closed,closed_at:g.closedAt||null,pay_method:g.payMethod||null,delete_logs:g.deleteLogs||[]};
+  const data={session_id:g.sessionId,name:g.name,pax:g.pax,shimei:g.shimei,closed:g.closed,closed_at:g.closedAt||null,pay_method:g.payMethod||null,delete_logs:g.deleteLogs||[],discount:g.discount||0};
   await sbFetch('groups?id=eq.'+g.id,'PATCH',data);
 }
 async function insertGroup(g){
@@ -526,10 +519,14 @@ function switchMainTab(tab){
 /* ---- 売上タブ ---- */
 function calcSales(groupList){
   const closed=groupList.filter(g=>g.closed);
-  const total=closed.reduce((s,g)=>s+g.orders.reduce((a,o)=>a+(o.price*o.qty),0),0);
-  const cash=closed.filter(g=>g.payMethod==='cash').reduce((s,g)=>s+g.orders.reduce((a,o)=>a+(o.price*o.qty),0),0);
-  const card=closed.filter(g=>g.payMethod==='card').reduce((s,g)=>s+g.orders.reduce((a,o)=>a+(o.price*o.qty),0),0);
-  return{total:Math.round(total*1.1),cash:Math.round(cash*1.1),card:Math.round(card*1.1),closedCount:closed.length,totalCount:groupList.length};
+  const sumSub=arr=>arr.reduce((s,g)=>s+g.orders.reduce((a,o)=>a+(o.price*o.qty),0),0);
+  const sumDiscount=arr=>arr.reduce((s,g)=>s+(g.discount||0),0);
+  const cashG=closed.filter(g=>g.payMethod==='cash');
+  const cardG=closed.filter(g=>g.payMethod==='card');
+  const total=Math.max(0,Math.round(sumSub(closed)*1.1)-sumDiscount(closed));
+  const cash=Math.max(0,Math.round(sumSub(cashG)*1.1)-sumDiscount(cashG));
+  const card=Math.max(0,Math.round(sumSub(cardG)*1.1)-sumDiscount(cardG));
+  return{total,cash,card,closedCount:closed.length,totalCount:groupList.length};
 }
 
 function renderSalesTab(){
@@ -667,7 +664,7 @@ function showGroupDetail(id){
     html+=`<div class="section-title">${staff}</div>`;
     const merged={};
     orders.forEach(o=>{if(!merged[o.name])merged[o.name]={name:o.name,price:o.price,qty:0};merged[o.name].qty+=o.qty;});
-    html+=Object.values(merged).map(o=>`<div class="order-item"><div><div class="order-name">${o.name}</div><div class="order-meta">×${o.qty}</div></div><div class="order-price">${o.price>0?'¥'+(o.price*o.qty).toLocaleString():'時価'}</div></div>`).join('');
+    html+=Object.values(merged).map(o=>`<div class="order-item"><div><div class="order-name">${o.name}</div><div class="order-meta">×${o.qty}</div></div><div class="order-price">¥${(o.price*o.qty).toLocaleString()}</div></div>`).join('');
   });
 
   // 合計
@@ -865,7 +862,7 @@ function oShowCat(el,cat){
     const ex=oCurOrders.find(o=>o.name===item.n&&o.who===oCurWho);
     const q=ex?ex.qty:0;
     const key=item.n.replace(/[\s（）、。]/g,'_');
-    return`<div class="mitem"><div class="iname">${item.n}</div><div style="display:flex;align-items:center;gap:8px;"><span class="iprice">${item.p>0?'¥'+item.p.toLocaleString():'時価'}</span><div class="qctrl"><button class="qbtn" onclick="oChQty('${item.n}',${item.p},-1)">−</button><span class="qnum" id="oq-${key}">${q||''}</span><button class="qbtn plus" onclick="oChQty('${item.n}',${item.p},1)">+</button></div></div></div>`;
+    return`<div class="mitem"><div class="iname">${item.n}</div><div style="display:flex;align-items:center;gap:8px;"><span class="iprice">¥${item.p.toLocaleString()}</span><div class="qctrl"><button class="qbtn" onclick="oChQty('${item.n}',${item.p},-1)">−</button><span class="qnum" id="oq-${key}">${q||''}</span><button class="qbtn plus" onclick="oChQty('${item.n}',${item.p},1)">+</button></div></div></div>`;
   }).join('');
 }
 
@@ -904,7 +901,7 @@ function oRenderSummary(){
     sub+=o.price*o.qty;
     const whoColor=o.who==='guest'?'#555':'#ff6b2b44';
     const nameColor=o.who==='guest'?'#ccc':'#ff6b2b';
-    return`<div class="orow" style="border-left:2px solid ${whoColor};padding-left:6px;margin-bottom:2px;"><span style="color:${nameColor}">${o.name} ×${o.qty} <span style="color:#555;font-size:10px;">[${label}]</span></span><span>${o.price>0?'¥'+(o.price*o.qty).toLocaleString():'時価'}</span></div>`;
+    return`<div class="orow" style="border-left:2px solid ${whoColor};padding-left:6px;margin-bottom:2px;"><span style="color:${nameColor}">${o.name} ×${o.qty} <span style="color:#555;font-size:10px;">[${label}]</span></span><span>¥${(o.price*o.qty).toLocaleString()}</span></div>`;
   }).join('');
   td.style.display='flex';txd.style.display='flex';
   document.getElementById('o-ototal').textContent='¥'+sub.toLocaleString();
@@ -944,17 +941,30 @@ function oOpenKaikei(id){
   else{
     const merged={};
     g.orders.forEach(o=>{const label=o.who==='guest'?'お客様':o.staff||OWNER_NAME;const key=o.name+'__'+label;if(!merged[key])merged[key]={name:o.name,price:o.price,qty:0,label};merged[key].qty+=o.qty;});
-    gEl.innerHTML=Object.values(merged).map(o=>`<div class="kaikei-item"><div style="flex:1;"><div class="kaikei-item-name">${o.name}</div><div class="kaikei-item-detail">${o.label}　×${o.qty}</div></div><div style="display:flex;align-items:center;gap:8px;"><div class="kaikei-item-price">${o.price>0?'¥'+(o.price*o.qty).toLocaleString():'時価'}</div>${!g.closed?`<button onclick="oDeleteOrderItem(${g.id},'${o.name}','${o.label}')" style="background:#2a1a1a;border:1px solid #e5393544;border-radius:8px;padding:8px 12px;color:#e53935;font-size:12px;cursor:pointer;min-width:44px;">削除</button>`:''}</div></div>`).join('');
+    gEl.innerHTML=Object.values(merged).map(o=>`<div class="kaikei-item"><div style="flex:1;"><div class="kaikei-item-name">${o.name}</div><div class="kaikei-item-detail">${o.label}　×${o.qty}</div></div><div style="display:flex;align-items:center;gap:8px;"><div class="kaikei-item-price">¥${(o.price*o.qty).toLocaleString()}</div>${!g.closed?`<button onclick="oDeleteOrderItem(${g.id},'${o.name}','${o.label}')" style="background:#2a1a1a;border:1px solid #e5393544;border-radius:8px;padding:8px 12px;color:#e53935;font-size:12px;cursor:pointer;min-width:44px;">削除</button>`:''}</div></div>`).join('');
   }
   const sub=g.orders.reduce((s,o)=>s+(o.price*o.qty),0);
   const tax=Math.round(sub*0.1);
+  const pretax=sub+tax;
   document.getElementById('o-k-subtotal').textContent='¥'+sub.toLocaleString();
   document.getElementById('o-k-tax').textContent='¥'+tax.toLocaleString();
-  document.getElementById('o-k-total').textContent='¥'+(sub+tax).toLocaleString();
+  document.getElementById('o-k-pretax-total').textContent='¥'+pretax.toLocaleString();
+  const discRow=document.getElementById('o-k-discount-row');
+  const discFixedRow=document.getElementById('o-k-discount-fixed-row');
+  const discInput=document.getElementById('o-k-discount-input');
+  const finalTotal=Math.max(0,Math.round((pretax-(g.discount||0))/10)*10);
+  document.getElementById('o-k-total').textContent='¥'+finalTotal.toLocaleString();
   const btn=document.getElementById('o-k-close-btn');
   const msg=document.getElementById('o-k-closed-msg');
   if(g.closed){
     btn.style.display='none';
+    discRow.style.display='none';
+    if(g.discount>0){
+      discFixedRow.style.display='flex';
+      document.getElementById('o-k-discount-fixed-val').textContent='−¥'+g.discount.toLocaleString();
+    } else {
+      discFixedRow.style.display='none';
+    }
     const payLabel=g.payMethod==='cash'?'💴 現金':'💳 カード';
     const backData=calcBackForSession([g]);
     const myBack=backData[g.shimei&&g.shimei.length?g.shimei[0]:'']||{drink:0,pct:0,shimei:0,total:0};
@@ -985,10 +995,28 @@ function oOpenKaikei(id){
       ${backHtml?`<div style="font-size:10px;color:#555;letter-spacing:1px;margin-top:12px;margin-bottom:6px;">バック明細</div>${backHtml}`:''}
     `;
   }
-  else{btn.style.display='block';msg.style.display='none';document.getElementById('o-pay-amount').textContent='¥'+(sub+tax).toLocaleString();}
+  else{
+    btn.style.display='block';msg.style.display='none';
+    discFixedRow.style.display='none';
+    discRow.style.display='flex';
+    discInput.value=g.discount||'';
+    document.getElementById('o-pay-amount').textContent='¥'+finalTotal.toLocaleString();
+  }
   document.getElementById('o-groups-view').style.display='none';
   document.getElementById('o-order-view').style.display='none';
   document.getElementById('o-kaikei-view').style.display='block';
+}
+
+function oUpdateKaikeiTotal(){
+  const g=groups.find(x=>x.id===oCurGroupId);
+  if(!g)return;
+  const sub=g.orders.reduce((s,o)=>s+(o.price*o.qty),0);
+  const tax=Math.round(sub*0.1);
+  const pretax=sub+tax;
+  const discount=parseInt(document.getElementById('o-k-discount-input').value)||0;
+  const total=Math.max(0,Math.round((pretax-discount)/10)*10);
+  document.getElementById('o-k-total').textContent='¥'+total.toLocaleString();
+  document.getElementById('o-pay-amount').textContent='¥'+total.toLocaleString();
 }
 
 function oOpenPayModal(){document.getElementById('o-pay-modal').classList.add('show');}
@@ -1006,6 +1034,7 @@ async function oCloseGroup(method){
   oClosePayModal();
   const g=groups.find(x=>x.id===oCurGroupId);
   g.closed=true;g.closedAt=new Date().toISOString();g.payMethod=method;
+  g.discount=parseInt(document.getElementById('o-k-discount-input').value)||0;
   await saveGroup(g);
   renderOGroups();
   document.getElementById('o-k-close-btn').style.display='none';
@@ -1238,31 +1267,27 @@ async function oConfirmClose(){
 }
 
 /* ---- Init ---- */
-function updateSessionBadge(){
+async function init(){
+  document.getElementById('o-glist').innerHTML='<div style="color:#555;font-size:13px;text-align:center;padding:20px;">読み込み中...</div>';
+  await loadData();
+  // セッションバッジと営業ボタン
   if(curSessionId){
     const session=sessions.find(s=>s.id===curSessionId);
     if(session&&!session.closedAt){
       const d=new Date(session.startedAt);
       document.getElementById('o-session-badge').textContent=fmtDateJP(d);
       document.getElementById('o-close-btn').style.display='block';
-      document.getElementById('o-start-btn').style.display='none';
     } else {
+      curSessionId=null;
+      localStorage.setItem('river_cur_session','');
       document.getElementById('o-start-btn').style.display='block';
-      document.getElementById('o-close-btn').style.display='none';
     }
   } else {
     document.getElementById('o-start-btn').style.display='block';
-    document.getElementById('o-close-btn').style.display='none';
   }
-}
-
-async function init(){
-  document.getElementById('o-glist').innerHTML='<div style="color:#555;font-size:13px;text-align:center;padding:20px;">読み込み中...</div>';
-  await loadData();
-  // セッションバッジと営業ボタン更新
-  updateSessionBadge();
   renderOGroups();
-  renderSalesTab();
+  renderSalesTab(); // 起動時に売上確認を表示
+  // 30秒ごとに自動更新
   setInterval(async()=>{await loadData();renderOGroups();},10000);
 }
 init();

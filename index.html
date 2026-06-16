@@ -309,7 +309,16 @@ body{background:#050505;min-height:100vh;display:flex;justify-content:center;pad
   <div class="kaikei-total-box">
     <div class="kaikei-row"><span>小計（税抜）</span><span id="k-subtotal">¥0</span></div>
     <div class="kaikei-row tax"><span>消費税 10%</span><span id="k-tax">¥0</span></div>
-    <div class="kaikei-row big"><span>税込合計</span><span id="k-total">¥0</span></div>
+    <div class="kaikei-row"><span>税込小計</span><span id="k-pretax-total">¥0</span></div>
+    <div class="kaikei-row" id="k-discount-row" style="display:none;align-items:center;">
+      <span>サービス</span>
+      <span style="display:flex;align-items:center;gap:4px;">
+        <span style="color:#ff6b2b;">−¥</span>
+        <input type="number" id="k-discount-input" placeholder="0" oninput="updateKaikeiTotal()" style="width:80px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;color:#fff;font-size:13px;text-align:right;">
+      </span>
+    </div>
+    <div class="kaikei-row" id="k-discount-fixed-row" style="display:none;color:#ff6b2b;"><span>サービス</span><span id="k-discount-fixed-val">−¥0</span></div>
+    <div class="kaikei-row big"><span>お会計金額</span><span id="k-total">¥0</span></div>
   </div>
   <button id="k-add-btn" onclick="openGroup(curGroupId)" style="display:block;width:100%;padding:14px;background:#1a1a1a;border:1px solid #333;border-radius:14px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:10px;">＋ 注文を追加する</button>
   <button class="close-btn" id="k-close-btn" onclick="openPayModal()">会計を締める ✓</button>
@@ -422,6 +431,7 @@ let STAFF=[],ALL_STAFF=[];
 let CAN_EDIT=[];
 let CAN_CLOSE=[];
 let CAN_KAIKEI=[];
+const CAN_DISCOUNT=['なおと','りん']; // サービス割引はこの2人のみ（会計締め自体の権限とは別）
 
 async function loadStaff(){
   const OWNER_NAMES=['りいや'];
@@ -434,9 +444,9 @@ async function loadStaff(){
     {name:'ゆうせい',can_edit:false,can_close:false,can_kaikei:false},
     {name:'としき',can_edit:false,can_close:false,can_kaikei:false},
     {name:'かなた',can_edit:false,can_close:false,can_kaikei:false},
-    {name:'けんしろう',can_edit:true,can_close:false,can_kaikei:true},
-    {name:'いっこう',can_edit:true,can_close:false,can_kaikei:true},
-    {name:'りいや',can_edit:true,can_close:true,can_kaikei:true},
+    {name:'けんしろう',can_edit:true,can_close:false,can_kaikei:false},
+    {name:'いっこう',can_edit:true,can_close:false,can_kaikei:false},
+    {name:'りいや',can_edit:true,can_close:true,can_kaikei:false},
   ];
   const data=await sbFetch('staff?active=eq.true&order=id.asc')||FALLBACK_STAFF;
   STAFF=data.filter(s=>!OWNER_NAMES.includes(s.name)).map(s=>s.name);
@@ -490,7 +500,7 @@ async function insertSession(session){
 }
 
 async function saveGroup(g){
-  const data={session_id:g.sessionId,name:g.name,pax:g.pax,shimei:g.shimei,closed:g.closed,closed_at:g.closedAt||null,pay_method:g.payMethod||null,delete_logs:g.deleteLogs||[]};
+  const data={session_id:g.sessionId,name:g.name,pax:g.pax,shimei:g.shimei,closed:g.closed,closed_at:g.closedAt||null,pay_method:g.payMethod||null,delete_logs:g.deleteLogs||[],discount:g.discount||0};
   await sbFetch('groups?id=eq.'+g.id,'PATCH',data);
 }
 
@@ -527,7 +537,7 @@ async function loadData(){
         id:g.id,sessionId:g.session_id,name:g.name,pax:g.pax,
         shimei:g.shimei||[],closed:g.closed,closedAt:g.closed_at,
         createdAt:g.created_at,
-        payMethod:g.pay_method,deleteLogs:g.delete_logs||[],
+        payMethod:g.pay_method,deleteLogs:g.delete_logs||[],discount:g.discount||0,
         orders:(g.orders||[]).map(o=>({name:o.name,price:o.price,qty:o.qty,who:o.who,staff:o.staff,custom:o.custom,ts:o.ts}))
       }));
     }
@@ -872,7 +882,7 @@ function showCat(el,cat){
     const ex=curOrders.find(o=>o.name===item.n&&o.who===curWho);
     const q=ex?ex.qty:0;
     const key=item.n.replace(/[\s（）、。]/g,'_');
-    return `<div class="mitem"><div class="iname">${item.n}</div><div style="display:flex;align-items:center;gap:8px;"><span class="iprice">${item.p>0?'¥'+item.p.toLocaleString():'時価'}</span><div class="qctrl"><button class="qbtn" onclick="chQty('${item.n}',${item.p},-1)">−</button><span class="qnum" id="q-${key}">${q||''}</span><button class="qbtn plus" onclick="chQty('${item.n}',${item.p},1)">+</button></div></div></div>`;
+    return `<div class="mitem"><div class="iname">${item.n}</div><div style="display:flex;align-items:center;gap:8px;"><span class="iprice">¥${item.p.toLocaleString()}</span><div class="qctrl"><button class="qbtn" onclick="chQty('${item.n}',${item.p},-1)">−</button><span class="qnum" id="q-${key}">${q||''}</span><button class="qbtn plus" onclick="chQty('${item.n}',${item.p},1)">+</button></div></div></div>`;
   }).join('');
 }
 
@@ -926,7 +936,7 @@ function renderSummary(){
   el.innerHTML=curOrders.map(o=>{
     const label=o.who==='guest'?'お客様':o.staff||curStaff;
     sub+=o.price*o.qty;
-    const priceStr=o.price>0?'¥'+(o.price*o.qty).toLocaleString():'時価';
+    const priceStr='¥'+(o.price*o.qty).toLocaleString();
     const whoColor=o.who==='guest'?'#555':'#ff6b2b44';
     const nameColor=o.who==='guest'?'#ccc':'#ff6b2b';
     return `<div class="orow" style="border-left:2px solid ${whoColor};padding-left:6px;margin-bottom:2px;"><span style="color:${nameColor}">${o.name} ×${o.qty} <span style="color:#555;font-size:10px;">[${label}]</span></span><span>${priceStr}</span></div>`;
@@ -977,7 +987,7 @@ function openKaikei(id){
       <div class="kaikei-item">
         <div style="flex:1;"><div class="kaikei-item-name">${o.name}</div><div class="kaikei-item-detail">${o.label}　×${o.qty}</div></div>
         <div style="display:flex;align-items:center;gap:8px;">
-          <div class="kaikei-item-price">${o.price>0?'¥'+(o.price*o.qty).toLocaleString():'時価'}</div>
+          <div class="kaikei-item-price">¥${(o.price*o.qty).toLocaleString()}</div>
           ${!g.closed?`<button onclick="deleteOrderItem(${g.id},'${o.name}','${o.label}')" style="background:transparent;border:1px solid #333;border-radius:6px;padding:3px 8px;color:#555;font-size:11px;cursor:pointer;">削除</button>`:''}
         </div>
       </div>`).join('');
@@ -985,17 +995,30 @@ function openKaikei(id){
 
   const sub=g.orders.reduce((s,o)=>s+(o.price*o.qty),0);
   const tax=Math.round(sub*0.1);
-  const total=sub+tax;
+  const pretax=sub+tax;
   document.getElementById('k-subtotal').textContent='¥'+sub.toLocaleString();
   document.getElementById('k-tax').textContent='¥'+tax.toLocaleString();
-  document.getElementById('k-total').textContent='¥'+total.toLocaleString();
+  document.getElementById('k-pretax-total').textContent='¥'+pretax.toLocaleString();
 
   const closeBtn=document.getElementById('k-close-btn');
   const closedMsg=document.getElementById('k-closed-msg');
   const addBtn=document.getElementById('k-add-btn');
+  const discRow=document.getElementById('k-discount-row');
+  const discFixedRow=document.getElementById('k-discount-fixed-row');
+  const discInput=document.getElementById('k-discount-input');
+  const finalTotal=Math.max(0,Math.round((pretax-(g.discount||0))/10)*10);
+
   if(g.closed){
     closeBtn.style.display='none';
     addBtn.style.display='none';
+    discRow.style.display='none';
+    if(g.discount>0){
+      discFixedRow.style.display='flex';
+      document.getElementById('k-discount-fixed-val').textContent='−¥'+g.discount.toLocaleString();
+    } else {
+      discFixedRow.style.display='none';
+    }
+    document.getElementById('k-total').textContent='¥'+finalTotal.toLocaleString();
     const payLabel=g.payMethod==='cash'?'💴 現金':'💳 カード';
     const dt=new Date(g.closedAt);
     closedMsg.style.display='block';
@@ -1004,14 +1027,48 @@ function openKaikei(id){
     closeBtn.style.display='block';
     addBtn.style.display='block';
     closedMsg.style.display='none';
-    document.getElementById('pay-amount-disp').textContent='¥'+total.toLocaleString();
+    if(CAN_DISCOUNT.includes(curStaff)){
+      discFixedRow.style.display='none';
+      discRow.style.display='flex';
+      discInput.value=g.discount||'';
+    } else {
+      discRow.style.display='none';
+      if(g.discount>0){
+        discFixedRow.style.display='flex';
+        document.getElementById('k-discount-fixed-val').textContent='−¥'+g.discount.toLocaleString();
+      } else {
+        discFixedRow.style.display='none';
+      }
+    }
+    document.getElementById('k-total').textContent='¥'+finalTotal.toLocaleString();
+    document.getElementById('pay-amount-disp').textContent='¥'+finalTotal.toLocaleString();
   } else {
     closeBtn.style.display='none';
     addBtn.style.display='block';
     closedMsg.style.display='block';
     closedMsg.textContent='会計締めはなおと・りんが行います';
+    discRow.style.display='none';
+    if(g.discount>0){
+      discFixedRow.style.display='flex';
+      document.getElementById('k-discount-fixed-val').textContent='−¥'+g.discount.toLocaleString();
+    } else {
+      discFixedRow.style.display='none';
+    }
+    document.getElementById('k-total').textContent='¥'+finalTotal.toLocaleString();
   }
   goTo('sc-kaikei');
+}
+
+function updateKaikeiTotal(){
+  const g=groups.find(x=>x.id===curGroupId);
+  if(!g)return;
+  const sub=g.orders.reduce((s,o)=>s+(o.price*o.qty),0);
+  const tax=Math.round(sub*0.1);
+  const pretax=sub+tax;
+  const discount=parseInt(document.getElementById('k-discount-input').value)||0;
+  const total=Math.max(0,Math.round((pretax-discount)/10)*10);
+  document.getElementById('k-total').textContent='¥'+total.toLocaleString();
+  document.getElementById('pay-amount-disp').textContent='¥'+total.toLocaleString();
 }
 
 function openPayModal(){document.getElementById('pay-modal').classList.add('show');}
@@ -1050,6 +1107,9 @@ async function closeGroup(method){
   g.closed=true;
   g.closedAt=new Date().toISOString();
   g.payMethod=method;
+  if(CAN_DISCOUNT.includes(curStaff)){
+    g.discount=parseInt(document.getElementById('k-discount-input').value)||0;
+  }
   renderGroups();
   await saveGroup(g);
   document.getElementById('k-close-btn').style.display='none';
