@@ -436,10 +436,41 @@ function calcBackForSession(sessionGroups){
 let STAFF=[];
 let groups=[],sessions=[],curSessionId=null;
 let curSubTab='today';
-let oCurGroupId=null,oCurOrders=[],oCurWho='guest',oCurOtherStaff='';
+let oCurGroupId=null,oCurOrders=[],oCurWho='guest',oCurOtherStaff='',oEditClosedGroupId=null;
 let staffList=[];
 
 function fmtDate(d){return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;}
+
+// その日の何回目の開店かを数えて「6/16①」のようなラベルを作る
+const CIRCLE_NUMS=['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩'];
+function makeSessionLabel(now){
+  const md=`${now.getMonth()+1}/${now.getDate()}`;
+  const sameDay=sessions.filter(s=>{
+    const sd=new Date(s.startedAt);
+    return `${sd.getMonth()+1}/${sd.getDate()}`===md;
+  });
+  const idx=sameDay.length; // これから作る分が何番目か
+  const num=CIRCLE_NUMS[idx]||`(${idx+1})`;
+  return md+num;
+}
+function sessionLabel(session){
+  if(!session)return '';
+  if(session.dateLabel&&/[①-⑩]|\(\d+\)/.test(session.dateLabel))return session.dateLabel;
+  // 旧データ（連番なし）はその日付だけ表示
+  return fmtDate(new Date(session.startedAt));
+}
+function updateSessionBadge(){
+  const session=sessions.find(s=>s.id===curSessionId);
+  if(session&&!session.closedAt){
+    document.getElementById('o-session-badge').textContent=sessionLabel(session);
+    document.getElementById('o-start-btn').style.display='none';
+    document.getElementById('o-close-btn').style.display='block';
+  } else {
+    document.getElementById('o-session-badge').textContent='';
+    document.getElementById('o-start-btn').style.display='block';
+    document.getElementById('o-close-btn').style.display='none';
+  }
+}
 function fmtDateJP(d){return`${d.getMonth()+1}月${d.getDate()}日（${DAYS[d.getDay()]}）`;}
 function fmtTime(d){return`${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;}
 function fmtDateTime(iso){const d=new Date(iso);return`${fmtDateJP(d)} ${fmtTime(d)}`;}
@@ -539,7 +570,8 @@ function renderSalesTab(){
   const session=sessions.find(s=>s.id===curSessionId);
   const sales=calcSales(sg);
   const d=session?new Date(session.startedAt):new Date();
-  document.getElementById('sales-date').textContent=fmtDateJP(d)+(session&&session.closedAt?' （閉店済）':' （営業中）');
+  const lbl=session?sessionLabel(session):fmtDateJP(d);
+  document.getElementById('sales-date').textContent=lbl+(session&&session.closedAt?' （閉店済）':' （営業中）');
   document.getElementById('sales-total').textContent='¥'+sales.total.toLocaleString();
   document.getElementById('sales-cash').textContent='¥'+sales.cash.toLocaleString();
   document.getElementById('sales-card').textContent='¥'+sales.card.toLocaleString();
@@ -644,7 +676,7 @@ function renderSubTab(tab){
       const sg=groups.filter(g=>g.sessionId===s.id);
       const sales=calcSales(sg);
       const d=new Date(s.startedAt);
-      return`<div class="session-card" data-session="${s.id}"><div class="session-date">${fmtDateJP(d)}</div><div class="session-meta">${fmtTime(d)}〜${s.closedAt?fmtTime(new Date(s.closedAt)):'—'}　${sg.length}グループ</div><div class="session-sales">¥${sales.total.toLocaleString()} <span style="font-size:10px;color:#555;">（現金¥${sales.cash.toLocaleString()} / カード¥${sales.card.toLocaleString()}）</span></div></div>`;
+      return`<div class="session-card" data-session="${s.id}"><div class="session-date">${sessionLabel(s)}</div><div class="session-meta">${fmtTime(d)}〜${s.closedAt?fmtTime(new Date(s.closedAt)):'—'}　${sg.length}グループ</div><div class="session-sales">¥${sales.total.toLocaleString()} <span style="font-size:10px;color:#555;">（現金¥${sales.cash.toLocaleString()} / カード¥${sales.card.toLocaleString()}）</span></div></div>`;
     }).join('');
   } else if(tab==='dellog'){
     const logs=[];
@@ -750,9 +782,11 @@ function showGroupDetail(id){
     html+=g.deleteLogs.map(l=>`<div class="del-log"><div class="del-log-name">🗑 ${l.name} ×${l.qty}</div><div class="del-log-meta">削除者：${l.deletedBy}　${fmtDateTime(l.ts)}</div></div>`).join('');
   }
 
-  // 未会計の場合は会計ボタンを表示
+  // 未会計の場合は会計ボタンを表示、会計済みの場合は編集ボタンを表示
   if(!g.closed){
     html+=`<button onclick="document.getElementById('detail-modal').classList.remove('show');switchMainTab('order');oOpenKaikei(${g.id});" style="background:#ff6b2b;border:none;border-radius:12px;width:100%;padding:14px;color:#fff;font-size:14px;font-weight:600;margin-top:16px;cursor:pointer;">会計を締める ✓</button>`;
+  } else {
+    html+=`<button onclick="document.getElementById('detail-modal').classList.remove('show');switchMainTab('order');oOpenEditClosedGroup(${g.id});" style="background:#1a1a1a;border:1px solid #555;border-radius:12px;width:100%;padding:14px;color:#ccc;font-size:14px;font-weight:600;margin-top:16px;cursor:pointer;">✏️ 編集する（指名・人数・注文）</button>`;
   }
 
   document.getElementById('detail-content').innerHTML=html;
@@ -775,7 +809,9 @@ function renderOGroups(){
   if(!sg.length){el.innerHTML='<div style="color:#333;font-size:13px;text-align:center;padding:20px;">営業中のグループなし</div>';return;}
   el.innerHTML=sg.map(g=>{
     const sub=g.orders.reduce((s,o)=>s+(o.price*o.qty),0);
-    return`<div class="gcard" data-group="${g.id}"><div class="gcard-top" style="flex:1;"><div><div class="gcard-name">${g.name}</div><div class="gcard-meta">${g.pax}名　指名：${g.shimei.length?g.shimei.join('・'):'なし'}</div><div class="gcard-actions"><span class="gcard-kaikei-btn" data-kaikei="${g.id}">会計 →</span></div></div><div class="gcard-price">¥${Math.round(sub*1.1).toLocaleString()}</div></div></div>`;
+    const isEmpty=g.orders.length===0;
+    const delBtn=isEmpty?`<span class="gcard-kaikei-btn" data-delgroup="${g.id}" style="background:#e5393522;border-color:#e5393544;color:#ff8a80;margin-left:6px;">削除</span>`:'';
+    return`<div class="gcard" data-group="${g.id}"><div class="gcard-top" style="flex:1;"><div><div class="gcard-name">${g.name}</div><div class="gcard-meta">${g.pax}名　指名：${g.shimei.length?g.shimei.join('・'):'なし'}</div><div class="gcard-actions"><span class="gcard-kaikei-btn" data-kaikei="${g.id}">会計 →</span>${delBtn}</div></div><div class="gcard-price">¥${Math.round(sub*1.1).toLocaleString()}</div></div></div>`;
   }).join('');
 }
 
@@ -828,6 +864,12 @@ function oOpenGroup(id){
 }
 
 function oBackToConfirm(){
+  if(oEditClosedGroupId){
+    const gid=oEditClosedGroupId;
+    oEditClosedGroupId=null;
+    oOpenKaikei(gid);
+    return;
+  }
   document.getElementById('o-groups-view').style.display='none';
   document.getElementById('o-confirm-view').style.display='block';
   document.getElementById('o-order-view').style.display='none';
@@ -965,11 +1007,16 @@ async function oSendOrder(){
   const g=groups.find(x=>x.id===oCurGroupId);
   oCurOrders.forEach(o=>g.orders.push({...o,ts:new Date().toISOString()}));
   oCurOrders=[];
-  oUpdateTotal();
-  oRenderSummary();
-  renderOGroups();
   await saveOrders(g.id,g.orders);
-  oBackToGroups();
+  if(oEditClosedGroupId===oCurGroupId){
+    oEditClosedGroupId=null;
+    oOpenKaikei(g.id);
+  } else {
+    oUpdateTotal();
+    oRenderSummary();
+    renderOGroups();
+    oBackToGroups();
+  }
 }
 
 async function oSendAndKaikei(){
@@ -993,7 +1040,7 @@ function oOpenKaikei(id){
   else{
     const merged={};
     g.orders.forEach(o=>{const label=o.who==='guest'?'お客様':o.staff||OWNER_NAME;const key=o.name+'__'+label;if(!merged[key])merged[key]={name:o.name,price:o.price,qty:0,label};merged[key].qty+=o.qty;});
-    gEl.innerHTML=Object.values(merged).map(o=>`<div class="kaikei-item"><div style="flex:1;"><div class="kaikei-item-name">${o.name}</div><div class="kaikei-item-detail">${o.label}　×${o.qty}</div></div><div style="display:flex;align-items:center;gap:8px;"><div class="kaikei-item-price">${o.price>0?'¥'+(o.price*o.qty).toLocaleString():'時価'}</div>${!g.closed?`<button onclick="oDeleteOrderItem(${g.id},'${o.name}','${o.label}')" style="background:#2a1a1a;border:1px solid #e5393544;border-radius:8px;padding:8px 12px;color:#e53935;font-size:12px;cursor:pointer;min-width:44px;">削除</button>`:''}</div></div>`).join('');
+    gEl.innerHTML=Object.values(merged).map(o=>`<div class="kaikei-item"><div style="flex:1;"><div class="kaikei-item-name">${o.name}</div><div class="kaikei-item-detail">${o.label}　×${o.qty}</div></div><div style="display:flex;align-items:center;gap:8px;"><div class="kaikei-item-price">${o.price>0?'¥'+(o.price*o.qty).toLocaleString():'時価'}</div><button onclick="oDeleteOrderItem(${g.id},'${o.name}','${o.label}')" style="background:#2a1a1a;border:1px solid #e5393544;border-radius:8px;padding:8px 12px;color:#e53935;font-size:12px;cursor:pointer;min-width:44px;">削除</button></div></div>`).join('');
   }
   const sub=g.orders.reduce((s,o)=>s+(o.price*o.qty),0);
   const tax=Math.round(sub*0.1);
@@ -1031,6 +1078,13 @@ function oOpenKaikei(id){
           <button onclick="oChangePayMethod('card')" style="background:${g.payMethod==='card'?'#1a1f2a':'#111'};border:2px solid ${g.payMethod==='card'?'#5b9cf6':'#333'};border-radius:10px;padding:12px;color:${g.payMethod==='card'?'#5b9cf6':'#555'};font-size:14px;cursor:pointer;">💳 カード</button>
         </div>
       </div>
+      <div style="background:#151515;border:1px solid #2a2a2a;border-radius:10px;padding:12px;margin-bottom:10px;">
+        <div style="font-size:11px;color:#888;margin-bottom:8px;">人数：<strong style="color:#fff;" id="o-k-pax-display">${g.pax}名</strong>　<span style="color:#ff6b2b;cursor:pointer;font-size:11px;" onclick="oEditPax(${g.id})">変更する</span></div>
+        <div style="font-size:11px;color:#888;margin-bottom:8px;">指名スタッフ</div>
+        <div class="mini-staff" id="o-k-shimei-edit">${STAFF.map(s=>`<div class="msbtn${g.shimei.includes(s)?' sel':''}" onclick="this.classList.toggle('sel')">${s}</div>`).join('')}</div>
+        <button onclick="oSaveShimeiFromKaikei(${g.id})" style="margin-top:8px;width:100%;padding:8px;background:#ff6b2b22;border:1px solid #ff6b2b44;border-radius:8px;color:#ff6b2b;font-size:12px;cursor:pointer;">指名を保存</button>
+      </div>
+      <button onclick="oOpenAddOrderToClosedGroup(${g.id})" style="width:100%;padding:10px;background:#1a1a1a;border:1px solid #333;border-radius:8px;color:#ccc;font-size:12px;cursor:pointer;margin-bottom:10px;">＋ 注文を追加する</button>
       ${backHtml?`<div style="font-size:10px;color:#555;letter-spacing:1px;margin-top:12px;margin-bottom:6px;">バック明細</div>${backHtml}`:''}
     `;
   }
@@ -1042,6 +1096,57 @@ function oOpenKaikei(id){
 
 function oOpenPayModal(){document.getElementById('o-pay-modal').classList.add('show');}
 function oClosePayModal(){document.getElementById('o-pay-modal').classList.remove('show');}
+
+// 会計済みグループを直接編集画面（会計画面）で開く
+function oOpenEditClosedGroup(id){
+  document.getElementById('o-groups-view').style.display='none';
+  document.getElementById('o-confirm-view').style.display='none';
+  document.getElementById('o-order-view').style.display='none';
+  oOpenKaikei(id);
+}
+
+async function oEditPax(groupId){
+  const g=groups.find(x=>x.id===groupId);
+  if(!g)return;
+  const v=prompt('人数を入力してください',g.pax);
+  if(v===null)return;
+  const n=parseInt(v);
+  if(!n||n<1){alert('正しい人数を入力してください');return;}
+  g.pax=n;
+  await saveGroup(g);
+  oOpenKaikei(groupId);
+}
+
+async function oSaveShimeiFromKaikei(groupId){
+  const g=groups.find(x=>x.id===groupId);
+  if(!g)return;
+  g.shimei=[...document.querySelectorAll('#o-k-shimei-edit .msbtn.sel')].map(el=>el.textContent);
+  await saveGroup(g);
+  oOpenKaikei(groupId);
+  alert('指名を更新しました');
+}
+
+// 会計済みグループに注文を追加するための簡易入力
+function oOpenAddOrderToClosedGroup(groupId){
+  oEditClosedGroupId=groupId;
+  oCurGroupId=groupId;
+  const g=groups.find(x=>x.id===groupId);
+  oCurOrders=[];
+  document.getElementById('o-cur-group').textContent=g.name+'（会計済・編集中）';
+  document.getElementById('o-shimei-display').innerHTML='';
+  document.getElementById('o-shimei-edit-area').style.display='none';
+  document.getElementById('o-other-staff-list').innerHTML=STAFF.map(s=>`<div class="msbtn" onclick="oSelOther(this,'${s}')">${s}</div>`).join('');
+  document.getElementById('o-orows').innerHTML='<span style="color:#444;font-size:12px;">まだ注文なし</span>';
+  document.getElementById('o-ototaldiv').style.display='none';
+  document.getElementById('o-otaxdiv').style.display='none';
+  document.getElementById('o-custom-input-area').style.display='none';
+  oSetWho('guest');
+  document.getElementById('o-cur-total').textContent='¥'+Math.round(g.orders.reduce((s,o)=>s+o.price*o.qty,0)*1.1).toLocaleString();
+  document.getElementById('o-groups-view').style.display='none';
+  document.getElementById('o-confirm-view').style.display='none';
+  document.getElementById('o-order-view').style.display='block';
+  document.getElementById('o-kaikei-view').style.display='none';
+}
 
 async function oChangePayMethod(method){
   const g=groups.find(x=>x.id===oCurGroupId);
@@ -1089,11 +1194,23 @@ document.addEventListener('click', async function(e){
 
   // グループカードタップ（注文タブ）
   const gcard=e.target.closest('[data-group]');
-  if(gcard&&!e.target.closest('[data-kaikei]')&&gcard.closest('#o-glist'))oOpenGroup(parseInt(gcard.dataset.group));
+  if(gcard&&!e.target.closest('[data-kaikei]')&&!e.target.closest('[data-delgroup]')&&gcard.closest('#o-glist'))oOpenGroup(parseInt(gcard.dataset.group));
 
   // 会計ボタン
   const kaikeiBtn=e.target.closest('[data-kaikei]');
   if(kaikeiBtn)oOpenKaikei(parseInt(kaikeiBtn.dataset.kaikei));
+
+  // グループ削除ボタン（空のグループのみ）
+  const delGroupBtn=e.target.closest('[data-delgroup]');
+  if(delGroupBtn){
+    const gid=parseInt(delGroupBtn.dataset.delgroup);
+    const g=groups.find(x=>x.id===gid);
+    if(g&&confirm(`「${g.name}」を削除しますか？\n（注文が入っていない空のグループのみ削除できます）`)){
+      await sbFetch('groups?id=eq.'+gid,'DELETE');
+      groups=groups.filter(x=>x.id!==gid);
+      renderOGroups();
+    }
+  }
 
   // 売上タブのグループカード → 詳細モーダル（sales-contentまたはdetail-content内）
   const salesGcard=e.target.closest('[data-detail-group]');
@@ -1127,8 +1244,9 @@ document.getElementById('o-addgroup-btn').addEventListener('click',()=>{
     const modal=document.getElementById('o-session-confirm-modal');
     const btnArea=document.getElementById('o-session-btn-area');
     if(activeSession){
+      const lbl=sessionLabel(activeSession);
       btnArea.innerHTML=`
-        <button onclick="continueSessionFromOModal('${activeSession.id}')" style="display:block;width:100%;padding:14px;background:#ff6b2b;border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:10px;">今日の営業を継続する 🍸</button>
+        <button onclick="continueSessionFromOModal('${activeSession.id}')" style="display:block;width:100%;padding:14px;background:#ff6b2b;border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:10px;">${lbl}を継続する 🍸</button>
         <button onclick="startSessionFromOModal()" style="display:block;width:100%;padding:12px;background:transparent;border:1px solid #555;border-radius:12px;color:#888;font-size:13px;cursor:pointer;margin-bottom:10px;">新しく営業を開始する</button>
         <button onclick="document.getElementById('o-session-confirm-modal').style.display='none'" style="display:block;width:100%;padding:12px;background:transparent;border:1px solid #333;border-radius:12px;color:#555;font-size:13px;cursor:pointer;">キャンセル</button>`;
     } else {
@@ -1151,7 +1269,8 @@ async function startSessionFromOModal(){
   const now=new Date();
   curSessionId='session_'+now.getTime();
   manualClosed=false;
-  const session={id:curSessionId,startedAt:now.toISOString(),closedAt:null,dateLabel:fmtDate(now)};
+  const label=makeSessionLabel(now);
+  const session={id:curSessionId,startedAt:now.toISOString(),closedAt:null,dateLabel:label};
   sessions.push(session);
   await insertSession(session);
   updateSessionBadge();
@@ -1253,13 +1372,12 @@ async function oStartSession(){
   const now=new Date();
   curSessionId='session_'+now.getTime();
   manualClosed=false; // 営業開始時にフラグリセット
-  const session={id:curSessionId,startedAt:now.toISOString(),closedAt:null,dateLabel:fmtDate(now)};
+  const label=makeSessionLabel(now);
+  const session={id:curSessionId,startedAt:now.toISOString(),closedAt:null,dateLabel:label};
   sessions.push(session);
   localStorage.setItem('river_cur_session',curSessionId);
   await sbFetch('sessions','POST',{id:session.id,started_at:session.startedAt,closed_at:null,date_label:session.dateLabel});
-  document.getElementById('o-session-badge').textContent=fmtDateJP(now);
-  document.getElementById('o-start-btn').style.display='none';
-  document.getElementById('o-close-btn').style.display='block';
+  updateSessionBadge();
   renderOGroups();
 }
 
@@ -1312,25 +1430,11 @@ async function oConfirmClose(){
 async function init(){
   document.getElementById('o-glist').innerHTML='<div style="color:#555;font-size:13px;text-align:center;padding:20px;">読み込み中...</div>';
   await loadData();
-  // セッションバッジと営業ボタン
-  if(curSessionId){
-    const session=sessions.find(s=>s.id===curSessionId);
-    if(session&&!session.closedAt){
-      const d=new Date(session.startedAt);
-      document.getElementById('o-session-badge').textContent=fmtDateJP(d);
-      document.getElementById('o-close-btn').style.display='block';
-    } else {
-      curSessionId=null;
-      localStorage.setItem('river_cur_session','');
-      document.getElementById('o-start-btn').style.display='block';
-    }
-  } else {
-    document.getElementById('o-start-btn').style.display='block';
-  }
+  updateSessionBadge();
   renderOGroups();
   renderSalesTab(); // 起動時に売上確認を表示
-  // 30秒ごとに自動更新
-  setInterval(async()=>{await loadData();renderOGroups();},10000);
+  // 10秒ごとに自動更新
+  setInterval(async()=>{await loadData();updateSessionBadge();renderOGroups();},10000);
 }
 let collectTargetId=null,collectMethod=null;
 function openCollectModal(id){
