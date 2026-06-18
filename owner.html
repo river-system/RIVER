@@ -14,6 +14,9 @@
 body{background:#050505;min-height:100vh;display:flex;justify-content:center;padding:20px;}
 .app{background:#0a0a0a;width:100%;max-width:420px;min-height:100vh;border-radius:16px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#fff;}
 .header{background:#111;border-bottom:1px solid #222;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;}
+.status-pill{font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;}
+.status-pill.open{background:#1a2a1a;color:#4caf50;}
+.status-pill.closed{background:#2a1414;color:#888;}
 .logo{font-size:12px;letter-spacing:3px;font-weight:500;}
 .logo span{color:#ff6b2b;}
 .owner-badge{background:#1f1200;border:1px solid #ff6b2b44;border-radius:6px;padding:2px 8px;font-size:10px;color:#ff6b2b;}
@@ -158,9 +161,9 @@ body{background:#050505;min-height:100vh;display:flex;justify-content:center;pad
   <div class="logo">BAR <span>RIVER</span></div>
   <div style="display:flex;align-items:center;gap:8px;">
     <div class="owner-badge">OWNER</div>
-    <div id="o-session-badge" style="font-size:10px;color:#555;"></div>
+    <div id="o-session-badge" class="status-pill closed">閉店中</div>
     <button id="o-start-btn" onclick="oStartSession()" style="background:#ff6b2b;border:none;border-radius:6px;padding:4px 10px;color:#fff;font-size:10px;cursor:pointer;display:none;">営業開始</button>
-    <button onclick="const s=curSessionId;loadData().then(()=>{if(s)curSessionId=s;renderOGroups();renderSalesTab();})" style="background:transparent;border:none;color:#555;font-size:16px;cursor:pointer;padding:4px 6px;">🔄</button>
+    <button onclick="loadData().then(()=>{updateSessionBadge();renderOGroups();renderSalesTab();})" style="background:transparent;border:none;color:#555;font-size:16px;cursor:pointer;padding:4px 6px;">🔄</button>
     <button id="o-close-btn" onclick="oOpenCloseModal()" style="background:transparent;border:1px solid #333;border-radius:6px;padding:4px 10px;color:#555;font-size:10px;cursor:pointer;display:none;">閉店</button>
   </div>
 </div>
@@ -461,12 +464,15 @@ function sessionLabel(session){
 }
 function updateSessionBadge(){
   const session=sessions.find(s=>s.id===curSessionId);
+  const badge=document.getElementById('o-session-badge');
   if(session&&!session.closedAt){
-    document.getElementById('o-session-badge').textContent=sessionLabel(session);
+    badge.className='status-pill open';
+    badge.textContent=sessionLabel(session)+'　営業中';
     document.getElementById('o-start-btn').style.display='none';
     document.getElementById('o-close-btn').style.display='block';
   } else {
-    document.getElementById('o-session-badge').textContent='';
+    badge.className='status-pill closed';
+    badge.textContent='閉店中';
     document.getElementById('o-start-btn').style.display='block';
     document.getElementById('o-close-btn').style.display='none';
   }

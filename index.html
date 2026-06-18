@@ -169,6 +169,9 @@ body{background:#050505;min-height:100vh;display:flex;justify-content:center;pad
 
 /* 営業日バッジ */
 .session-badge{background:#1f1200;border:1px solid #ff6b2b33;border-radius:6px;padding:2px 8px;font-size:10px;color:#ff6b2b;margin-left:6px;}
+.status-pill{font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;}
+.status-pill.open{background:#1a2a1a;color:#4caf50;}
+.status-pill.closed{background:#2a1414;color:#888;}
 </style>
 </head>
 <body>
@@ -177,6 +180,7 @@ body{background:#050505;min-height:100vh;display:flex;justify-content:center;pad
   <div class="logo">BAR <span>RIVER</span></div>
   <div style="display:flex;align-items:center;gap:8px;">
     <span id="hinfo" style="color:#ff6b2b;font-size:12px;font-weight:500;display:none;"></span>
+    <div id="header-session-badge" style="display:none;align-items:center;gap:6px;"></div>
     <button id="logout-btn" onclick="try{localStorage.removeItem('river_cur_staff');}catch(e){} goTo('sc-staff');curStaff='';curOrders=[];" style="display:none;background:transparent;border:none;color:#fff;font-size:11px;cursor:pointer;padding:4px 6px;">変更</button>
     <button onclick="loadData().then(()=>{updateSessionBadge();renderGroups();})" style="background:transparent;border:none;color:#555;font-size:16px;cursor:pointer;padding:4px 6px;">🔄</button>
     <button class="header-close-btn" id="header-close-btn" style="display:none;" onclick="openCloseModal()">閉店</button>
@@ -510,6 +514,28 @@ async function insertGroup(g){
   await sbFetch('groups','POST',data);
 }
 
+async function sbDelete(path){
+  const headers={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};
+  try{
+    const res=await fetch(SUPABASE_URL+'/rest/v1/'+path,{method:'DELETE',headers});
+    return res.ok;
+  }catch(e){console.error('SB Delete Error:',e);return false;}
+}
+
+async function deleteEmptyGroup(id){
+  const g=groups.find(x=>x.id===id);
+  if(!g)return;
+  if(g.orders.length>0){alert('注文が入っているグループは削除できません');return;}
+  if(!confirm(`「${g.name}」を削除しますか？\n（注文が入っていない空のグループのみ削除できます）`))return;
+  const ok=await sbDelete('groups?id=eq.'+id);
+  if(!ok){
+    alert('削除に失敗しました。通信状況を確認して、もう一度お試しください。');
+    return;
+  }
+  groups=groups.filter(x=>x.id!==id);
+  renderGroups();
+}
+
 async function saveOrders(groupId, orders){
   // 既存注文を削除して全件インサート
   await sbFetch('orders?group_id=eq.'+groupId,'DELETE');
@@ -573,12 +599,17 @@ function updateSessionBadge(){
   const session=sessions.find(s=>s.id===curSessionId);
   const badge=document.getElementById('session-date-badge');
   const closeBtn=document.getElementById('header-close-btn');
+  const headerBadge=document.getElementById('header-session-badge');
   if(session&&!session.closedAt){
     badge.textContent=sessionLabel(session);
     closeBtn.style.display=CAN_CLOSE.includes(curStaff)?'block':'none';
+    headerBadge.style.display='flex';
+    headerBadge.innerHTML=`<span class="session-badge">${sessionLabel(session)}</span><span class="status-pill open">営業中</span>`;
   } else {
     badge.textContent='';
     closeBtn.style.display='none';
+    headerBadge.style.display='flex';
+    headerBadge.innerHTML=`<span class="status-pill closed">閉店中</span>`;
   }
 }
 function fmtDateJP(d){return`${d.getMonth()+1}月${d.getDate()}日（${DAYS[d.getDay()]}）`;}
@@ -762,11 +793,14 @@ function renderGroups(){
     el.innerHTML=list.map(g=>{
       const sub=g.orders.reduce((s,o)=>s+(o.price*o.qty),0);
       const createdTime=g.createdAt?fmtTime(new Date(g.createdAt)):'';
+      const isEmpty=g.orders.length===0;
+      const delBtn=isEmpty?`<button onclick="event.stopPropagation();deleteEmptyGroup(${g.id})" style="background:#e5393522;border:1px solid #e5393544;border-radius:8px;padding:5px 10px;font-size:11px;color:#ff8a80;cursor:pointer;margin-top:6px;">削除</button>`:'';
       return `<div class="gcard" onclick="openKaikei(${g.id})">
         <div style="flex:1;">
           <div class="gname">${g.name}</div>
           <div class="gmeta">${g.pax}名　指名：${g.shimei.length?g.shimei.join('・'):'なし'}</div>
           ${createdTime?`<div style="font-size:10px;color:#555;margin-top:3px;">入店 ${createdTime}</div>`:''}
+          ${delBtn}
         </div>
         <div class="gprice"><div class="gprice-num">¥${Math.round(sub*1.1).toLocaleString()}</div><div class="gprice-sub">税込</div></div>
       </div>`;
