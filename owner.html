@@ -328,6 +328,7 @@ body{background:#050505;min-height:100vh;display:flex;justify-content:center;pad
   <div style="background:#1a1a1a;border-radius:16px;padding:24px 20px;width:100%;max-width:380px;">
     <div style="font-size:16px;font-weight:600;color:#fff;text-align:center;margin-bottom:8px;">閉店しますか？</div>
     <div id="o-close-modal-stats" style="background:#111;border-radius:10px;padding:12px;margin:16px 0;"></div>
+    <div id="o-close-modal-warning" style="display:none;"></div>
     <button onclick="oConfirmClose()" style="background:#ff6b2b;border:none;border-radius:12px;width:100%;padding:14px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:8px;">閉店する 🌙</button>
     <button onclick="document.getElementById('o-close-modal').style.display='none'" style="background:transparent;border:none;color:#444;font-size:12px;width:100%;padding:8px;cursor:pointer;">キャンセル</button>
   </div>
@@ -1269,10 +1270,26 @@ function oOpenCloseModal(){
     <div style="display:flex;justify-content:space-between;font-size:12px;color:#888;padding:3px 0;"><span>未会計</span><span style="color:${unclosed.length>0?'#ff6b2b':'#888'}">${unclosed.length}組</span></div>
     <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:600;color:#fff;border-top:1px solid #222;margin-top:6px;padding-top:8px;"><span>売上合計（税込）</span><span>¥${sales.total.toLocaleString()}</span></div>
   `;
+  if(unclosed.length>0){
+    document.getElementById('o-close-modal-warning').innerHTML=`
+      <div style="background:#2a1414;border:1px solid #e53935;border-radius:10px;padding:12px;margin-bottom:14px;">
+        <div style="color:#ff8a80;font-weight:700;font-size:13px;margin-bottom:6px;">⚠️ 未会計が${unclosed.length}組残っています</div>
+        <div style="color:#ff8a8099;font-size:11px;">${unclosed.map(g=>g.name).join('、')}</div>
+      </div>`;
+    document.getElementById('o-close-modal-warning').style.display='block';
+  } else {
+    document.getElementById('o-close-modal-warning').style.display='none';
+  }
   document.getElementById('o-close-modal').style.display='flex';
 }
 
 async function oConfirmClose(){
+  const sg=curSessionId?groups.filter(g=>g.sessionId===curSessionId||!g.sessionId):[];
+  const unclosed=sg.filter(g=>!g.closed);
+  if(unclosed.length>0){
+    const ok=confirm(`未会計が${unclosed.length}組あります（${unclosed.map(g=>g.name).join('、')}）。\nこのまま閉店すると未会計データは残りますが、見えにくくなります。\n本当に閉店しますか？`);
+    if(!ok)return;
+  }
   document.getElementById('o-close-modal').style.display='none';
   const now=new Date();
   const session=sessions.find(s=>s.id===curSessionId);
