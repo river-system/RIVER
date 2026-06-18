@@ -463,9 +463,13 @@ async function loadData(){
   const sData=await sbFetch('sessions?order=started_at.asc');
   if(sData)sessions=sData.map(s=>({id:s.id,startedAt:s.started_at,closedAt:s.closed_at,dateLabel:s.date_label}));
 
-  // セッションは自動取得しない
-  // グループ作成時に明示的に開始or継続を選ぶ
-  curSessionId=null;
+  // 未閉店セッションがあれば自動で使う（複数端末共有・更新時も維持）
+  const openSession=sessions.find(s=>!s.closedAt);
+  if(openSession){
+    curSessionId=openSession.id;
+  } else if(curSessionId&&!sessions.find(s=>s.id===curSessionId)){
+    curSessionId=null;
+  }
   const gData=await sbFetch('groups?order=id.asc&select=*,orders(*)');
   if(gData){
     groups=gData.map(g=>({
@@ -503,11 +507,9 @@ function switchMainTab(tab){
   document.getElementById('sc-sales-tab').classList.toggle('active',tab==='sales');
   document.getElementById('sc-staff-tab').classList.toggle('active',tab==='staff-mgmt');
   if(tab==='order'){
-    // 注文タブ：今日の未閉店セッションがあれば自動でセット
+    // 注文タブ：未閉店セッションがあれば自動でセット（日付に依存しない）
     if(!curSessionId){
-      const nowJST=new Date(Date.now()+9*60*60*1000);
-      const today=nowJST.toISOString().slice(0,10);
-      const active=sessions.find(s=>!s.closedAt&&s.startedAt&&new Date(new Date(s.startedAt).getTime()+9*60*60*1000).toISOString().slice(0,10)===today);
+      const active=sessions.find(s=>!s.closedAt);
       if(active)curSessionId=active.id;
     }
     renderOGroups();
