@@ -161,6 +161,7 @@ body{background:#050505;min-height:100vh;display:flex;justify-content:center;pad
 .pay-badge{display:inline-block;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:500;margin-left:6px;vertical-align:middle;}
 .pay-badge.cash{background:#1a2a1a;color:#4caf50;}
 .pay-badge.card{background:#1a1f2a;color:#5b9cf6;}
+.pay-badge.unpaid{background:#2a1414;color:#ff8a80;}
 .hist-time{font-size:10px;color:#333;margin-top:2px;}
 
 /* ヘッダー閉店ボタン */
@@ -538,6 +539,7 @@ async function loadData(){
         shimei:g.shimei||[],closed:g.closed,closedAt:g.closed_at,
         createdAt:g.created_at,
         payMethod:g.pay_method,deleteLogs:g.delete_logs||[],discount:g.discount||0,
+        isUnpaid:g.is_unpaid||false,unpaidCollected:g.unpaid_collected||false,
         orders:(g.orders||[]).map(o=>({name:o.name,price:o.price,qty:o.qty,who:o.who,staff:o.staff,custom:o.custom,ts:o.ts}))
       }));
     }
@@ -552,6 +554,14 @@ function saveLocalSession(){
 function fmtDate(d){return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;}
 function fmtDateJP(d){return`${d.getMonth()+1}月${d.getDate()}日（${DAYS[d.getDay()]}）`;}
 function fmtTime(d){return`${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;}
+
+// 1グループの最終お会計金額（税込・サービス割引適用後・100円単位丸め）
+function groupFinalTotal(g){
+  const sub=g.orders.reduce((s,o)=>s+(o.price*o.qty),0);
+  const tax=Math.round(sub*0.1);
+  const pretax=sub+tax;
+  return Math.max(0,Math.round((pretax-(g.discount||0))/100)*100);
+}
 
 /* ---- 営業セッション ---- */
 function initOpenScreen(){
@@ -736,18 +746,19 @@ function renderGroups(){
   } else {
     const sorted=[...list].sort((a,b)=>new Date(b.closedAt)-new Date(a.closedAt));
     el.innerHTML=sorted.map(g=>{
-      const sub=g.orders.reduce((s,o)=>s+(o.price*o.qty),0);
-      const total=Math.round(sub*1.1);
-      const payLabel=g.payMethod==='cash'?'現金':'カード';
-      const payClass=g.payMethod==='cash'?'cash':'card';
+      const total=groupFinalTotal(g);
+      const payLabel=g.isUnpaid?(g.unpaidCollected?'回収済':'未回収'):(g.payMethod==='cash'?'現金':'カード');
+      const payClass=g.isUnpaid?(g.unpaidCollected?'cash':'unpaid'):(g.payMethod==='cash'?'cash':'card');
       const dt=new Date(g.closedAt);
       const timeStr=fmtTime(dt);
       const createdStr=g.createdAt?fmtTime(new Date(g.createdAt)):'';
+      const unpaidNote=g.isUnpaid&&!g.unpaidCollected?'<div style="font-size:10px;color:#ff8a80;margin-top:3px;">⚠️ 未回収（オーナー報告済・対応不要）</div>':'';
       return `<div class="gcard" onclick="openKaikei(${g.id})" style="opacity:0.75;">
         <div style="flex:1;">
           <div class="gname">${g.name}<span class="pay-badge ${payClass}">${payLabel}</span></div>
           <div class="gmeta">${g.pax}名　指名：${g.shimei.length?g.shimei.join('・'):'なし'}</div>
           <div class="hist-time">${createdStr?createdStr+' 入店 〜 ':''}${timeStr} 会計済</div>
+          ${unpaidNote}
         </div>
         <div class="gprice"><div class="gprice-num">¥${total.toLocaleString()}</div><div class="gprice-sub">税込</div></div>
       </div>`;

@@ -274,7 +274,16 @@ body{background:#050505;min-height:100vh;display:flex;justify-content:center;pad
     <div class="kaikei-total-box">
       <div class="kaikei-row"><span>小計（税抜）</span><span id="o-k-subtotal">¥0</span></div>
       <div class="kaikei-row tax"><span>消費税 10%</span><span id="o-k-tax">¥0</span></div>
-      <div class="kaikei-row big"><span>税込合計</span><span id="o-k-total">¥0</span></div>
+      <div class="kaikei-row"><span>税込小計</span><span id="o-k-pretax-total">¥0</span></div>
+      <div class="kaikei-row" id="o-k-discount-row" style="display:none;align-items:center;">
+        <span>サービス</span>
+        <span style="display:flex;align-items:center;gap:4px;">
+          <span style="color:#ff6b2b;">−¥</span>
+          <input type="number" id="o-k-discount-input" placeholder="0" oninput="oUpdateKaikeiTotal()" style="width:80px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;padding:5px 8px;color:#fff;font-size:13px;text-align:right;">
+        </span>
+      </div>
+      <div class="kaikei-row" id="o-k-discount-fixed-row" style="display:none;color:#ff6b2b;"><span>サービス</span><span id="o-k-discount-fixed-val">−¥0</span></div>
+      <div class="kaikei-row big"><span>お会計金額</span><span id="o-k-total">¥0</span></div>
     </div>
     <button class="close-btn" id="o-k-close-btn" onclick="oOpenPayModal()">会計を締める ✓</button>
     <div id="o-k-closed-msg" style="display:none;text-align:center;padding:14px;color:#555;font-size:12px;"></div>
@@ -507,7 +516,7 @@ async function loadData(){
       id:g.id,sessionId:g.session_id,name:g.name,pax:g.pax,
       shimei:g.shimei||[],closed:g.closed,closedAt:g.closed_at,
       createdAt:g.created_at,
-      payMethod:g.pay_method,deleteLogs:g.delete_logs||[],
+      payMethod:g.pay_method,deleteLogs:g.delete_logs||[],discount:g.discount||0,
       isUnpaid:g.is_unpaid||false,unpaidCollected:g.unpaid_collected||false,
       collectedMethod:g.collected_method||null,collectedAt:g.collected_at||null,
       orders:(g.orders||[]).map(o=>({name:o.name,price:o.price,qty:o.qty,who:o.who,staff:o.staff,custom:o.custom,ts:o.ts}))
@@ -518,7 +527,7 @@ async function loadData(){
 }
 
 async function saveGroup(g){
-  const data={session_id:g.sessionId,name:g.name,pax:g.pax,shimei:g.shimei,closed:g.closed,closed_at:g.closedAt||null,pay_method:g.payMethod||null,delete_logs:g.deleteLogs||[],is_unpaid:g.isUnpaid||false,unpaid_collected:g.unpaidCollected||false,collected_method:g.collectedMethod||null,collected_at:g.collectedAt||null};
+  const data={session_id:g.sessionId,name:g.name,pax:g.pax,shimei:g.shimei,closed:g.closed,closed_at:g.closedAt||null,pay_method:g.payMethod||null,delete_logs:g.deleteLogs||[],is_unpaid:g.isUnpaid||false,unpaid_collected:g.unpaidCollected||false,collected_method:g.collectedMethod||null,collected_at:g.collectedAt||null,discount:g.discount||0};
   await sbFetch('groups?id=eq.'+g.id,'PATCH',data);
 }
 async function insertGroup(g){
@@ -550,14 +559,22 @@ function switchMainTab(tab){
 }
 
 /* ---- 売上タブ ---- */
+// 1グループの最終お会計金額（税込・サービス割引適用後・100円単位丸め）
+function groupFinalTotal(g){
+  const sub=g.orders.reduce((s,o)=>s+(o.price*o.qty),0);
+  const tax=Math.round(sub*0.1);
+  const pretax=sub+tax;
+  return Math.max(0,Math.round((pretax-(g.discount||0))/100)*100);
+}
+
 function calcSales(groupList){
   const closed=groupList.filter(g=>g.closed&&!g.isUnpaid);
   const unpaid=groupList.filter(g=>g.closed&&g.isUnpaid&&!g.unpaidCollected);
-  const total=closed.reduce((s,g)=>s+g.orders.reduce((a,o)=>a+(o.price*o.qty),0),0);
-  const cash=closed.filter(g=>g.payMethod==='cash').reduce((s,g)=>s+g.orders.reduce((a,o)=>a+(o.price*o.qty),0),0);
-  const card=closed.filter(g=>g.payMethod==='card').reduce((s,g)=>s+g.orders.reduce((a,o)=>a+(o.price*o.qty),0),0);
-  const unpaidTotal=unpaid.reduce((s,g)=>s+g.orders.reduce((a,o)=>a+(o.price*o.qty),0),0);
-  return{total:Math.round(total*1.1),cash:Math.round(cash*1.1),card:Math.round(card*1.1),closedCount:closed.length,totalCount:groupList.length,unpaidCount:unpaid.length,unpaidTotal:Math.round(unpaidTotal*1.1)};
+  const total=closed.reduce((s,g)=>s+groupFinalTotal(g),0);
+  const cash=closed.filter(g=>g.payMethod==='cash').reduce((s,g)=>s+groupFinalTotal(g),0);
+  const card=closed.filter(g=>g.payMethod==='card').reduce((s,g)=>s+groupFinalTotal(g),0);
+  const unpaidTotal=unpaid.reduce((s,g)=>s+groupFinalTotal(g),0);
+  return{total,cash,card,closedCount:closed.length,totalCount:groupList.length,unpaidCount:unpaid.length,unpaidTotal};
 }
 
 function renderSalesTab(){
@@ -580,7 +597,7 @@ function renderSalesTab(){
   const allUnpaid=groups.filter(g=>g.closed&&g.isUnpaid&&!g.unpaidCollected);
   const alertEl=document.getElementById('unpaid-alert');
   if(allUnpaid.length){
-    const unpaidSum=allUnpaid.reduce((s,g)=>s+Math.round(g.orders.reduce((a,o)=>a+o.price*o.qty,0)*1.1),0);
+    const unpaidSum=allUnpaid.reduce((s,g)=>s+groupFinalTotal(g),0);
     document.getElementById('unpaid-alert-count').textContent=allUnpaid.length;
     document.getElementById('unpaid-alert-total').textContent='¥'+unpaidSum.toLocaleString();
     alertEl.style.display='block';
@@ -612,8 +629,7 @@ function renderSubTab(tab){
       if(unpaidNotCollected.length){
         html+='<div style="color:#ff8a80;font-size:12px;font-weight:700;margin:6px 0 10px;">未回収（'+unpaidNotCollected.length+'件）</div>';
         html+=unpaidNotCollected.map(g=>{
-          const sub=g.orders.reduce((s,o)=>s+o.price*o.qty,0);
-          const total=Math.round(sub*1.1);
+          const total=groupFinalTotal(g);
           const d=g.closedAt?fmtDateJP(new Date(g.closedAt)):'';
           return`<div style="background:#1a1414;border:1px solid #3a2020;border-radius:12px;padding:14px;margin-bottom:8px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
@@ -628,8 +644,7 @@ function renderSubTab(tab){
       if(unpaidCollected.length){
         html+='<div style="color:#666;font-size:12px;font-weight:700;margin:16px 0 10px;">回収済み（'+unpaidCollected.length+'件）</div>';
         html+=unpaidCollected.map(g=>{
-          const sub=g.orders.reduce((s,o)=>s+o.price*o.qty,0);
-          const total=Math.round(sub*1.1);
+          const total=groupFinalTotal(g);
           const cm=g.collectedMethod==='cash'?'💴 現金':'💳 カード';
           const cd=g.collectedAt?fmtDateJP(new Date(g.collectedAt)):'';
           return`<div style="background:#141a14;border:1px solid #203020;border-radius:12px;padding:12px;margin-bottom:8px;opacity:0.8;">
@@ -689,7 +704,7 @@ function renderSubTab(tab){
 
 function renderGCard(g){
   const sub=g.orders.reduce((s,o)=>s+(o.price*o.qty),0);
-  const total=Math.round(sub*1.1);
+  const total=g.closed?groupFinalTotal(g):Math.round(sub*1.1);
   const payLabel=g.closed?(g.payMethod==='cash'?'現金':'カード'):'未会計';
   const payClass=g.closed?(g.payMethod==='cash'?'cash':'card'):'open';
   return`<div class="gcard${g.closed?' closed':''}" data-group="${g.id}" data-detail-group="${g.id}" style="cursor:pointer;">
@@ -752,7 +767,7 @@ function showGroupDetail(id){
   });
 
   // 合計
-  html+=`<div class="total-box"><div class="total-row"><span>小計（税抜）</span><span>¥${sub.toLocaleString()}</span></div><div class="total-row tax"><span>消費税 10%</span><span>¥${tax.toLocaleString()}</span></div><div class="total-row big"><span>税込合計</span><span>¥${(sub+tax).toLocaleString()}</span></div></div>`;
+  html+=`<div class="total-box"><div class="total-row"><span>小計（税抜）</span><span>¥${sub.toLocaleString()}</span></div><div class="total-row tax"><span>消費税 10%</span><span>¥${tax.toLocaleString()}</span></div>${g.closed&&g.discount>0?`<div class="total-row" style="color:#ff6b2b;"><span>サービス</span><span>−¥${g.discount.toLocaleString()}</span></div>`:''}<div class="total-row big"><span>${g.closed?'お会計金額':'税込合計'}</span><span>¥${(g.closed?groupFinalTotal(g):sub+tax).toLocaleString()}</span></div></div>`;
 
   // バック明細（会計済みのみ）
   if(g.closed){
@@ -1044,13 +1059,26 @@ function oOpenKaikei(id){
   }
   const sub=g.orders.reduce((s,o)=>s+(o.price*o.qty),0);
   const tax=Math.round(sub*0.1);
+  const pretax=sub+tax;
+  const finalTotal=Math.max(0,Math.round((pretax-(g.discount||0))/100)*100);
   document.getElementById('o-k-subtotal').textContent='¥'+sub.toLocaleString();
   document.getElementById('o-k-tax').textContent='¥'+tax.toLocaleString();
-  document.getElementById('o-k-total').textContent='¥'+(sub+tax).toLocaleString();
+  document.getElementById('o-k-pretax-total').textContent='¥'+pretax.toLocaleString();
+  const discRow=document.getElementById('o-k-discount-row');
+  const discFixedRow=document.getElementById('o-k-discount-fixed-row');
+  const discInput=document.getElementById('o-k-discount-input');
   const btn=document.getElementById('o-k-close-btn');
   const msg=document.getElementById('o-k-closed-msg');
   if(g.closed){
     btn.style.display='none';
+    discRow.style.display='none';
+    if(g.discount>0){
+      discFixedRow.style.display='flex';
+      document.getElementById('o-k-discount-fixed-val').textContent='−¥'+g.discount.toLocaleString();
+    } else {
+      discFixedRow.style.display='none';
+    }
+    document.getElementById('o-k-total').textContent='¥'+finalTotal.toLocaleString();
     const payLabel=g.payMethod==='cash'?'💴 現金':'💳 カード';
     const backData=calcBackForSession([g]);
     const myBack=backData[g.shimei&&g.shimei.length?g.shimei[0]:'']||{drink:0,pct:0,shimei:0,total:0};
@@ -1088,10 +1116,30 @@ function oOpenKaikei(id){
       ${backHtml?`<div style="font-size:10px;color:#555;letter-spacing:1px;margin-top:12px;margin-bottom:6px;">バック明細</div>${backHtml}`:''}
     `;
   }
-  else{btn.style.display='block';msg.style.display='none';document.getElementById('o-pay-amount').textContent='¥'+(sub+tax).toLocaleString();}
+  else{
+    btn.style.display='block';
+    msg.style.display='none';
+    discFixedRow.style.display='none';
+    discRow.style.display='flex';
+    discInput.value=g.discount||'';
+    document.getElementById('o-k-total').textContent='¥'+finalTotal.toLocaleString();
+    document.getElementById('o-pay-amount').textContent='¥'+finalTotal.toLocaleString();
+  }
   document.getElementById('o-groups-view').style.display='none';
   document.getElementById('o-order-view').style.display='none';
   document.getElementById('o-kaikei-view').style.display='block';
+}
+
+function oUpdateKaikeiTotal(){
+  const g=groups.find(x=>x.id===oCurGroupId);
+  if(!g)return;
+  const sub=g.orders.reduce((s,o)=>s+(o.price*o.qty),0);
+  const tax=Math.round(sub*0.1);
+  const pretax=sub+tax;
+  const discount=parseInt(document.getElementById('o-k-discount-input').value)||0;
+  const total=Math.max(0,Math.round((pretax-discount)/100)*100);
+  document.getElementById('o-k-total').textContent='¥'+total.toLocaleString();
+  document.getElementById('o-pay-amount').textContent='¥'+total.toLocaleString();
 }
 
 function oOpenPayModal(){document.getElementById('o-pay-modal').classList.add('show');}
@@ -1159,6 +1207,7 @@ async function oChangePayMethod(method){
 async function oCloseGroup(method){
   oClosePayModal();
   const g=groups.find(x=>x.id===oCurGroupId);
+  g.discount=parseInt(document.getElementById('o-k-discount-input').value)||0;
   if(method==='unpaid'){
     if(!confirm('この伝票を「未回収」として締めますか？\n現金・カードどちらの売上にも入りません。後で回収済みにできます。'))return;
     g.closed=true;g.closedAt=new Date().toISOString();g.payMethod=null;g.isUnpaid=true;g.unpaidCollected=false;
