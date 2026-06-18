@@ -410,12 +410,15 @@ function calcBackForSession(sessionGroups){
       }
     });
 
-    // 指名バック → 指名あり卓のみ（全注文合計・メニュー価格は税抜、サービス割引も反映）
+    // 指名バック → 指名あり卓のみ（割引後の税込最終合計から税抜小計を逆算してシャンパン分を引く）
     if(isShimeiTable){
-      const totalExTax=g.orders.reduce((s,o)=>s+(o.price*o.qty),0);
       const champTotal=g.orders.filter(o=>CHAMPAGNE_NAMES.includes(o.name)).reduce((s,o)=>s+(o.price*o.qty),0);
-      const discountExTax=(g.discount||0)/1.1; // 割引額（税込）を税抜相当に変換
-      const shimeiBase=Math.max(0,totalExTax-discountExTax-champTotal);
+      const subExTax=g.orders.reduce((s,o)=>s+(o.price*o.qty),0);
+      const tax=Math.round(subExTax*0.1);
+      const pretax=subExTax+tax;
+      const finalTotal=Math.max(0,Math.round((pretax-(g.discount||0))/100)*100); // 割引後・100円丸めの最終税込金額
+      const exTaxAfterDiscount=Math.round(finalTotal/1.1/100)*100; // それを税抜に逆算してもう一度100円丸め
+      const shimeiBase=Math.max(0,exTaxAfterDiscount-champTotal);
       const shimeiBackTotal=Math.round(shimeiBase*0.1);
       const perStaff=Math.round(shimeiBackTotal/g.shimei.length);
       g.shimei.forEach(s=>{
