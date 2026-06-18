@@ -492,10 +492,14 @@ async function sbFetch(path,method='GET',body=null){
   if(body)opts.body=JSON.stringify(body);
   try{
     const res=await fetch(SUPABASE_URL+'/rest/v1/'+path,opts);
-    if(!res.ok)return null;
+    if(!res.ok){
+      const errText=await res.text().catch(()=>'');
+      console.error('sbFetch失敗',method,path,res.status,errText);
+      return null;
+    }
     const text=await res.text();
     return text?JSON.parse(text):null;
-  }catch(e){return null;}
+  }catch(e){console.error('sbFetch例外',method,path,e);return null;}
 }
 
 async function loadData(){
@@ -528,7 +532,8 @@ async function loadData(){
 
 async function saveGroup(g){
   const data={session_id:g.sessionId,name:g.name,pax:g.pax,shimei:g.shimei,closed:g.closed,closed_at:g.closedAt||null,pay_method:g.payMethod||null,delete_logs:g.deleteLogs||[],is_unpaid:g.isUnpaid||false,unpaid_collected:g.unpaidCollected||false,collected_method:g.collectedMethod||null,collected_at:g.collectedAt||null,discount:g.discount||0};
-  await sbFetch('groups?id=eq.'+g.id,'PATCH',data);
+  const result=await sbFetch('groups?id=eq.'+g.id,'PATCH',data);
+  return result!==null;
 }
 async function insertGroup(g){
   await sbFetch('groups','POST',{id:g.id,session_id:g.sessionId,name:g.name,pax:g.pax,shimei:g.shimei,closed:false,delete_logs:[]});
@@ -1207,6 +1212,7 @@ async function oChangePayMethod(method){
 async function oCloseGroup(method){
   oClosePayModal();
   const g=groups.find(x=>x.id===oCurGroupId);
+  const prevState={discount:g.discount,closed:g.closed,closedAt:g.closedAt,payMethod:g.payMethod,isUnpaid:g.isUnpaid,unpaidCollected:g.unpaidCollected};
   g.discount=parseInt(document.getElementById('o-k-discount-input').value)||0;
   if(method==='unpaid'){
     if(!confirm('この伝票を「未回収」として締めますか？\n現金・カードどちらの売上にも入りません。後で回収済みにできます。'))return;
@@ -1214,7 +1220,13 @@ async function oCloseGroup(method){
   } else {
     g.closed=true;g.closedAt=new Date().toISOString();g.payMethod=method;g.isUnpaid=false;
   }
-  await saveGroup(g);
+  const ok=await saveGroup(g);
+  if(!ok){
+    Object.assign(g,prevState); // ローカル状態を元に戻す
+    alert('会計の保存に失敗しました。通信状況を確認して、もう一度お試しください。');
+    oOpenKaikei(g.id);
+    return;
+  }
   renderOGroups();
   document.getElementById('o-k-close-btn').style.display='none';
   const msg=document.getElementById('o-k-closed-msg');
@@ -1506,7 +1518,12 @@ async function confirmCollect(){
   const g=groups.find(x=>x.id===collectTargetId);
   if(!g)return;
   g.unpaidCollected=true;g.collectedMethod=collectMethod;g.collectedAt=new Date(date+'T12:00:00').toISOString();
-  await saveGroup(g);
+  const ok=await saveGroup(g);
+  if(!ok){
+    alert('保存に失敗しました。通信状況を確認して、もう一度お試しください。\n（Supabase側のカラム未設定の可能性があります）');
+    g.unpaidCollected=false; // ローカルの状態も元に戻す
+    return;
+  }
   document.getElementById('o-collect-modal').style.display='none';
   renderSalesTab();
 }
